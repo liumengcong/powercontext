@@ -1,0 +1,14 @@
+{
+  "materials_complete": false,
+  "platform_submitted": false,
+  "score_confirmed": false,
+  "minimax_executed": false,
+  "reference_checks_passed": true,
+  "missing": [
+    "真实 MiniMax API 代码生成及对应证据",
+    "推送最终版本到本人仓库 minimax 分支"
+  ],
+  "next": "开通 MiniMax 资源后运行 python complete.py；再提交并推送",
+  "target_repository": "https://github.com/liumengcong/powercontext",
+  "target_branch": "minimax"
+}

@@ -1,0 +1,126 @@
+{
+  "mode": "reference",
+  "finished": "2026-11-16T08:42:28.076356+00:00",
+  "code_origin": "local-delivered-snapshot; MiniMax not called in this run",
+  "minimax_executed": false,
+  "ready_for_submission": false,
+  "checks": {
+    "runnable": true,
+    "minimax_actual": false,
+    "context_correct": true,
+    "database_actual": true,
+    "state_reuse_after_restart": true,
+    "code_change_effective": true
+  },
+  "before": {
+    "feature": {
+      "command": [
+        "python",
+        "-m",
+        "pytest",
+        "tests/test_feature.py",
+        "-q",
+        "--tb=short",
+        "--junitxml=before-feature.xml"
+      ],
+      "started": "2026-11-16T08:42:16.344701+00:00",
+      "finished": "2026-11-16T08:42:16.724557+00:00",
+      "exit_code": 1,
+      "source_fingerprint": "e7bd091c638594b8110ee66e57509f895ea553f7bfa1bc7cda8bcf1d0868c607",
+      "file_sha256": "1e8e8f4664b73802172fe5f0c33b4e2fe16f304cd920598c9f074d5088a1935a",
+      "tests": 12,
+      "failures": 10,
+      "errors": 0,
+      "failure_types": [
+        null
+      ],
+      "failure_messages": [
+        "AssertionError: assert ['A', 'B', 'C', 'D', 'E'] == ['C', 'D', 'E']\n  \n  At index 0 diff: 'A' != 'C'\n  Left contains 2 more items, first extra item: 'D'\n  Use -v to get more diff",
+        "AssertionError: assert ['A', 'C', 'E'] == ['C', 'E']\n  \n  At index 0 diff: 'A' != 'C'\n  Left contains one more item: 'E'\n  Use -v to get more diff",
+        "Failed: DID NOT RAISE <class 'ValueError'>",
+        "Failed: DID NOT RAISE <class 'ValueError'>",
+        "Failed: DID NOT RAISE <class 'ValueError'>",
+        "Failed: DID NOT RAISE <class 'ValueError'>",
+        "Failed: DID NOT RAISE <class 'ValueError'>",
+        "Failed: DID NOT RAISE <class 'ValueError'>",
+        "Failed: DID NOT RAISE <class 'ValueError'>",
+        "AssertionError: assert [{'id': 'A', ...total': 5000}] == []\n  \n  Left contains 5 more items, first extra item: {'id': 'A', 'status': 'paid', 'total': 0}\n  Use -v to get more diff"
+      ]
+    },
+    "regression": {
+      "command": [
+        "python",
+        "-m",
+        "pytest",
+        "tests/test_regression.py",
+        "-q",
+        "--tb=short",
+        "--junitxml=before-regression.xml"
+      ],
+      "started": "2026-11-16T08:42:16.726959+00:00",
+      "finished": "2026-11-16T08:42:17.027509+00:00",
+      "exit_code": 0,
+      "source_fingerprint": "e7bd091c638594b8110ee66e57509f895ea553f7bfa1bc7cda8bcf1d0868c607",
+      "file_sha256": "1e8e8f4664b73802172fe5f0c33b4e2fe16f304cd920598c9f074d5088a1935a",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "failure_types": [],
+      "failure_messages": []
+    }
+  },
+  "after": {
+    "feature": {
+      "command": [
+        "python",
+        "-m",
+        "pytest",
+        "tests/test_feature.py",
+        "-q",
+        "--tb=short",
+        "--junitxml=after-feature.xml"
+      ],
+      "started": "2026-11-16T08:42:22.226128+00:00",
+      "finished": "2026-11-16T08:42:22.557157+00:00",
+      "exit_code": 0,
+      "source_fingerprint": "1de56e8f37dad66dcc5e2ca7b5a9710c41a9bffa3e12128959b30f9716e15dc7",
+      "file_sha256": "7c019962139e7e00eaad2394cc9a225534c3847e54cf6b84aca2c1c7aea8fae9",
+      "tests": 12,
+      "failures": 0,
+      "errors": 0,
+      "failure_types": [],
+      "failure_messages": []
+    },
+    "regression": {
+      "command": [
+        "python",
+        "-m",
+        "pytest",
+        "tests/test_regression.py",
+        "-q",
+        "--tb=short",
+        "--junitxml=after-regression.xml"
+      ],
+      "started": "2026-11-16T08:42:22.559524+00:00",
+      "finished": "2026-11-16T08:42:22.866750+00:00",
+      "exit_code": 0,
+      "source_fingerprint": "1de56e8f37dad66dcc5e2ca7b5a9710c41a9bffa3e12128959b30f9716e15dc7",
+      "file_sha256": "7c019962139e7e00eaad2394cc9a225534c3847e54cf6b84aca2c1c7aea8fae9",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "failure_types": [],
+      "failure_messages": []
+    }
+  },
+  "spec_update": {
+    "passed": true,
+    "source_id": "ORD-003",
+    "revision": "v2-probe",
+    "old_validation_invalidated": true,
+    "scope": "retrieval probe only; implementation and final tests use restored v1"
+  },
+  "tests_unchanged": true,
+  "after_source_fingerprint": "1de56e8f37dad66dcc5e2ca7b5a9710c41a9bffa3e12128959b30f9716e15dc7",
+  "after_code_sha256": "7c019962139e7e00eaad2394cc9a225534c3847e54cf6b84aca2c1c7aea8fae9"
+}

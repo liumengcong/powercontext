@@ -1,0 +1,23 @@
+{
+  "command": [
+    "python",
+    "-m",
+    "pytest",
+    "tests",
+    "-q",
+    "--junitxml=reports/module-tests.xml"
+  ],
+  "exit_code": 0,
+  "timestamp": "2026-11-16T08:43:10.512536+00:00",
+  "source_files": {
+    "sdd_context/__init__.py": "4a43cb8ef8da0ab15ff9ea42cc1314059df505ce509c50d858df23e09f536938",
+    "sdd_context/__main__.py": "e344b10307e012ad5418e17b485c9d69d69ec8736b730adc978587262c0e651c",
+    "sdd_context/agent.py": "2f7e9dc42949673d05ff5a92f1f4137b621a8d8dfb3e6a2c44d1e1efabe3715a",
+    "sdd_context/common.py": "eba036f37127e20f1ba988b82609b7634755ab683e795b3ae3047d2b4ff2464b",
+    "sdd_context/context.py": "6b417e5e377a95ed5bccec5606d3a1de90da7a89d20bf99e140c54066d95e5c1",
+    "sdd_context/database.py": "804e2a177ef7583a50780be25969cb087adbbcc0231f8e9c91c0a1fa3838d6b4",
+    "sdd_context/ingest.py": "2fc48f40c3d8a0346e9ce9abd5d392e933deca187ed9fb79807923cc1b84a99d",
+    "sdd_context/state.py": "ec884545fa9f6fa333483527fa3cbbc6767df5c5aeaad6785f5bcfcfee884d13",
+    "tests/test_context_module.py": "f6d910b3093bd367e0d352dadeba408ee26a7d13e9960f813f276ea8fef3f2db"
+  }
+}

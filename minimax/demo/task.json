@@ -1,0 +1,15 @@
+{
+  "task_id": "orders-min-total",
+  "task": "Implement list_orders min_total filter; keep status, order, inputs unchanged",
+  "required_source_ids": [
+    "ORD-001", "ORD-002", "ORD-003", "ORD-004",
+    "business/orders.py::list_orders",
+    "tests/test_feature.py::test_min_total_boundary",
+    "tests/test_feature.py::test_min_total_combines_status",
+    "tests/test_feature.py::test_min_total_rejects_invalid",
+    "tests/test_regression.py::test_orders_status_filter",
+    "tests/test_regression.py::test_orders_independent_copies"
+  ],
+  "baseline": "min_total 参数存在，但未实现筛选和校验",
+  "expected": "目标功能测试和原有回归测试使用相同测试文件，在修改后全部通过"
+}

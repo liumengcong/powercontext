@@ -1,0 +1,2 @@
+# Preserve the exact formatting of generated test logs and unified diffs.
+reports/** -whitespace

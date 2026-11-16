@@ -1,0 +1,7 @@
+{
+  "task": "Implement list_orders min_total filter; keep status, order, inputs unchanged",
+  "done": ["已阅读 ORD-001 至 ORD-004"],
+  "todo": ["运行目标与回归测试"],
+  "validation": {},
+  "source_fingerprint": ""
+}

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="10" skipped="0" tests="12" time="0.077" timestamp="2026-11-16T16:42:16.584152+08:00" hostname="liumengcongdeMacBook-Air.local"><testcase classname="reports.runs.20261116T084216Z-13c176.project.tests.test_feature" name="test_min_total_boundary" time="0.001"><failure message="AssertionError: assert ['A', 'B', 'C', 'D', 'E'] == ['C', 'D', 'E']&#10;  &#10;  At index 0 diff: 'A' != 'C'&#10;  Left contains 2 more items, first extra item: 'D'&#10;  Use -v to get more diff">tests/test_feature.py:9: in test_min_total_boundary
+    assert [o["id"] for o in list_orders(orders, min_total=1000)] == ["C", "D", "E"]
+E   AssertionError: assert ['A', 'B', 'C', 'D', 'E'] == ['C', 'D', 'E']
+E     
+E     At index 0 diff: 'A' != 'C'
+E     Left contains 2 more items, first extra item: 'D'
+E     Use -v to get more diff</failure></testcase><testcase classname="reports.runs.20261116T084216Z-13c176.project.tests.test_feature" name="test_min_total_combines_status" time="0.000"><failure message="AssertionError: assert ['A', 'C', 'E'] == ['C', 'E']&#10;  &#10;  At index 0 diff: 'A' != 'C'&#10;  Left contains one more item: 'E'&#10;  Use -v to get more diff">tests/test_feature.py:13: in test_min_total_combines_status
+    assert [o["id"] for o in list_orders(orders, status="paid", min_total=1000)] == ["C", "E"]
+E   AssertionError: assert ['A', 'C', 'E'] == ['C', 'E']
+E     
+E     At index 0 diff: 'A' != 'C'
+E     Left contains one more item: 'E'
+E     Use -v to get more diff</failure></testcase><testcase classname="reports.runs.20261116T084216Z-13c176.project.tests.test_feature" name="test_min_total_rejects_invalid[-1]" time="0.000"><failure message="Failed: DID NOT RAISE &lt;class 'ValueError'&gt;">tests/test_feature.py:18: in test_min_total_rejects_invalid
+    with pytest.raises(ValueError, match="min_total"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE &lt;class 'ValueError'&gt;</failure></testcase><testcase classname="reports.runs.20261116T084216Z-13c176.project.tests.test_feature" name="test_min_total_rejects_invalid[True]" time="0.000"><failure message="Failed: DID NOT RAISE &lt;class 'ValueError'&gt;">tests/test_feature.py:18: in test_min_total_rejects_invalid
+    with pytest.raises(ValueError, match="min_total"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE &lt;class 'ValueError'&gt;</failure></testcase><testcase classname="reports.runs.20261116T084216Z-13c176.project.tests.test_feature" name="test_min_total_rejects_invalid[False]" time="0.000"><failure message="Failed: DID NOT RAISE &lt;class 'ValueError'&gt;">tests/test_feature.py:18: in test_min_total_rejects_invalid
+    with pytest.raises(ValueError, match="min_total"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE &lt;class 'ValueError'&gt;</failure></testcase><testcase classname="reports.runs.20261116T084216Z-13c176.project.tests.test_feature" name="test_min_total_rejects_invalid[1.5]" time="0.000"><failure message="Failed: DID NOT RAISE &lt;class 'ValueError'&gt;">tests/test_feature.py:18: in test_min_total_rejects_invalid
+    with pytest.raises(ValueError, match="min_total"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE &lt;class 'ValueError'&gt;</failure></testcase><testcase classname="reports.runs.20261116T084216Z-13c176.project.tests.test_feature" name="test_min_total_rejects_invalid[1000]" time="0.000"><failure message="Failed: DID NOT RAISE &lt;class 'ValueError'&gt;">tests/test_feature.py:18: in test_min_total_rejects_invalid
+    with pytest.raises(ValueError, match="min_total"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE &lt;class 'ValueError'&gt;</failure></testcase><testcase classname="reports.runs.20261116T084216Z-13c176.project.tests.test_feature" name="test_min_total_rejects_invalid[nan]" time="0.000"><failure message="Failed: DID NOT RAISE &lt;class 'ValueError'&gt;">tests/test_feature.py:18: in test_min_total_rejects_invalid
+    with pytest.raises(ValueError, match="min_total"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE &lt;class 'ValueError'&gt;</failure></testcase><testcase classname="reports.runs.20261116T084216Z-13c176.project.tests.test_feature" name="test_min_total_rejects_invalid[inf]" time="0.000"><failure message="Failed: DID NOT RAISE &lt;class 'ValueError'&gt;">tests/test_feature.py:18: in test_min_total_rejects_invalid
+    with pytest.raises(ValueError, match="min_total"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE &lt;class 'ValueError'&gt;</failure></testcase><testcase classname="reports.runs.20261116T084216Z-13c176.project.tests.test_feature" name="test_min_total_zero" time="0.000" /><testcase classname="reports.runs.20261116T084216Z-13c176.project.tests.test_feature" name="test_min_total_above_all" time="0.000"><failure message="AssertionError: assert [{'id': 'A', ...total': 5000}] == []&#10;  &#10;  Left contains 5 more items, first extra item: {'id': 'A', 'status': 'paid', 'total': 0}&#10;  Use -v to get more diff">tests/test_feature.py:27: in test_min_total_above_all
+    assert list_orders(orders, min_total=6000) == []
+E   AssertionError: assert [{'id': 'A', ...total': 5000}] == []
+E     
+E     Left contains 5 more items, first extra item: {'id': 'A', 'status': 'paid', 'total': 0}
+E     Use -v to get more diff</failure></testcase><testcase classname="reports.runs.20261116T084216Z-13c176.project.tests.test_feature" name="test_min_total_does_not_mutate" time="0.000" /></testsuite></testsuites>

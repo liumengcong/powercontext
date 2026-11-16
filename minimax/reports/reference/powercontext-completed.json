@@ -1,0 +1,60 @@
+{
+  "engine": "PowerContext ArtifactRepository/SQLiteProfile",
+  "revision": 2,
+  "artifact_id": "orders-min-total",
+  "content": {
+    "task": "Implement list_orders min_total filter; keep status, order, inputs unchanged",
+    "done": [
+      "导入规格、业务代码与测试",
+      "确认旧代码功能失败且原有回归通过",
+      "完成代码修改",
+      "目标与回归测试全部通过"
+    ],
+    "todo": [],
+    "validation": {
+      "feature": {
+        "command": [
+          "python",
+          "-m",
+          "pytest",
+          "tests/test_feature.py",
+          "-q",
+          "--tb=short",
+          "--junitxml=after-feature.xml"
+        ],
+        "started": "2026-11-16T08:42:22.226128+00:00",
+        "finished": "2026-11-16T08:42:22.557157+00:00",
+        "exit_code": 0,
+        "source_fingerprint": "1de56e8f37dad66dcc5e2ca7b5a9710c41a9bffa3e12128959b30f9716e15dc7",
+        "file_sha256": "7c019962139e7e00eaad2394cc9a225534c3847e54cf6b84aca2c1c7aea8fae9",
+        "tests": 12,
+        "failures": 0,
+        "errors": 0,
+        "failure_types": [],
+        "failure_messages": []
+      },
+      "regression": {
+        "command": [
+          "python",
+          "-m",
+          "pytest",
+          "tests/test_regression.py",
+          "-q",
+          "--tb=short",
+          "--junitxml=after-regression.xml"
+        ],
+        "started": "2026-11-16T08:42:22.559524+00:00",
+        "finished": "2026-11-16T08:42:22.866750+00:00",
+        "exit_code": 0,
+        "source_fingerprint": "1de56e8f37dad66dcc5e2ca7b5a9710c41a9bffa3e12128959b30f9716e15dc7",
+        "file_sha256": "7c019962139e7e00eaad2394cc9a225534c3847e54cf6b84aca2c1c7aea8fae9",
+        "tests": 6,
+        "failures": 0,
+        "errors": 0,
+        "failure_types": [],
+        "failure_messages": []
+      }
+    },
+    "source_fingerprint": "1de56e8f37dad66dcc5e2ca7b5a9710c41a9bffa3e12128959b30f9716e15dc7"
+  }
+}

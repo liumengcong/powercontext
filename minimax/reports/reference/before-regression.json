@@ -1,0 +1,21 @@
+{
+  "command": [
+    "python",
+    "-m",
+    "pytest",
+    "tests/test_regression.py",
+    "-q",
+    "--tb=short",
+    "--junitxml=before-regression.xml"
+  ],
+  "started": "2026-11-16T08:42:16.726959+00:00",
+  "finished": "2026-11-16T08:42:17.027509+00:00",
+  "exit_code": 0,
+  "source_fingerprint": "e7bd091c638594b8110ee66e57509f895ea553f7bfa1bc7cda8bcf1d0868c607",
+  "file_sha256": "1e8e8f4664b73802172fe5f0c33b4e2fe16f304cd920598c9f074d5088a1935a",
+  "tests": 6,
+  "failures": 0,
+  "errors": 0,
+  "failure_types": [],
+  "failure_messages": []
+}
