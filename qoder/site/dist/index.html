@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>研习台 StudyFlow · 让下一次学习，从上次的进展继续</title>
+<meta name="description" content="研习台 StudyFlow：基于 PowerContext 开源组件的本地学习记忆工具。笔记、薄弱点、待办与偏好存成可溯源记忆，重启后读回并生成带出处的继续学习清单与复盘初稿。">
+<style>
+  :root{
+    --bg:#f6f4f0; --panel:#fffdf9; --ink:#17293f; --ink-soft:#4d6076; --line:#e3ded6;
+    --teal:#0f8b82; --teal-soft:#e3f3f1; --amber:#c8801f; --red:#b3453a;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Source Han Sans SC",system-ui,sans-serif;
+    line-height:1.75;font-size:16px;-webkit-font-smoothing:antialiased}
+  code,pre,.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  a{color:var(--teal)}
+  header.hero{padding:56px 24px 40px;border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg,#fffdf9 0%,var(--bg) 100%)}
+  .wrap{max-width:1040px;margin:0 auto;padding:0 24px}
+  .wrap.inner{padding-top:8px;padding-bottom:64px}
+  .brand{display:flex;align-items:baseline;gap:10px;margin-bottom:18px}
+  .brand b{font-size:20px;letter-spacing:.5px}
+  .brand i{font-style:normal;color:var(--teal);font-size:14px;letter-spacing:1px}
+  h1{font-size:30px;line-height:1.35;margin:0 0 12px}
+  h1 span{color:var(--teal)}
+  .lede{font-size:17px;color:var(--ink-soft);margin:0 0 22px;max-width:70ch}
+  .cta{display:flex;flex-wrap:wrap;gap:12px;margin:0 0 8px}
+  .btn{display:inline-block;padding:10px 18px;border-radius:10px;text-decoration:none;
+    border:1px solid var(--line);background:#fff;color:var(--ink);font-size:15px}
+  .btn.primary{background:var(--teal);border-color:var(--teal);color:#fff}
+  .tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:20px;padding:0;list-style:none}
+  .tags li{font-size:13px;color:var(--ink-soft);background:var(--teal-soft);
+    border:1px solid #cfe8e5;border-radius:999px;padding:3px 12px}
+  .notice{margin:28px 0 0;padding:16px 18px;border-radius:12px;background:#fff6e6;
+    border:1px solid #eddab3;font-size:15px}
+  .notice b{color:var(--amber)}
+  h2{font-size:22px;margin:48px 0 6px}
+  h2 + p.sub{margin:0 0 18px;color:var(--ink-soft);font-size:15px}
+  h3{font-size:17px;margin:26px 0 6px}
+  .grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr))}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 20px}
+  .card h3{margin:0 0 6px;font-size:16px}
+  .card p{margin:0;font-size:15px;color:var(--ink-soft)}
+  table{width:100%;border-collapse:collapse;background:var(--panel);
+    border:1px solid var(--line);border-radius:12px;overflow:hidden;font-size:15px}
+  th,td{padding:11px 14px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+  th{background:#f0ece5;font-weight:600;font-size:14px}
+  tr:last-child td{border-bottom:none}
+  figure{margin:0;background:var(--panel);border:1px solid var(--line);border-radius:14px;
+    padding:10px;overflow:hidden}
+  figure img{display:block;width:100%;height:auto;border-radius:9px;border:1px solid var(--line)}
+  figcaption{font-size:14px;color:var(--ink-soft);padding:10px 6px 4px}
+  .shots{display:grid;gap:18px;grid-template-columns:repeat(auto-fit,minmax(min(340px,100%),1fr))}
+  pre{background:#10243c;color:#e8eef7;padding:16px 18px;border-radius:12px;overflow:auto;
+    font-size:13.5px;line-height:1.6;margin:10px 0 0}
+  pre .c{color:#8fb0c9}
+  ul.check{list-style:none;padding:0;margin:12px 0 0}
+  ul.check li{padding-left:26px;position:relative;margin-bottom:8px;font-size:15px}
+  ul.check li::before{content:"✓";position:absolute;left:0;top:0;color:var(--teal);font-weight:700}
+  ul.warn{list-style:none;padding:0;margin:12px 0 0}
+  ul.warn li{padding-left:26px;position:relative;margin-bottom:8px;font-size:15px;color:var(--ink-soft)}
+  ul.warn li::before{content:"!";position:absolute;left:4px;top:0;color:var(--red);font-weight:700}
+  .quote{background:var(--teal-soft);border:1px solid #cfe8e5;border-radius:12px;
+    padding:14px 18px;font-size:15px;margin:18px 0 0}
+  footer{border-top:1px solid var(--line);padding:28px 0 48px;color:var(--ink-soft);font-size:14px}
+  .todo{border-left:4px solid var(--amber);padding-left:14px}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="brand"><b>研习台</b><i>StudyFlow</i></div>
+    <h1>让下一次学习，<span>从上次的进展继续</span></h1>
+    <p class="lede">
+      笔记、薄弱点、待办散在一个个聊天会话里，换个窗口就要重讲一遍背景。
+      研习台用开源组件 <a href="https://github.com/oceanbase/powercontext">PowerContext</a>
+      把这些内容存成可溯源的记忆，重新打开应用时读回来，生成带出处的继续学习清单与复盘初稿。
+    </p>
+    <div class="cta">
+      <a class="btn primary" href="#run">本机运行说明</a>
+      <a class="btn" href="#shots">看真实截图</a>
+      <a class="btn" href="https://github.com/liumengcong/powercontext/tree/studyflow-qoder-20261116/qoder">源码目录（GitHub）</a>
+    </div>
+    <ul class="tags">
+      <li>PowerContext 1.5.1 内置 runtime</li>
+      <li>Python 3.12 + FastAPI</li>
+      <li>本地单用户 · 绑定 127.0.0.1</li>
+      <li>无构建步骤的原生前端</li>
+      <li>规则整理，不调用生成式模型</li>
+    </ul>
+    <div class="notice">
+      <b>项目展示与运行入口。</b> 本页展示真实运行截图、验证结果与源代码。
+      完整的记忆存储、检索与续学功能按下方说明在本机运行，数据保存在自己的电脑中。
+    </div>
+  </div>
+</header>
+
+<div class="wrap inner">
+
+<h2>痛点</h2>
+<p class="sub">从学生与科研人员的真实动作出发，不是从功能清单出发。</p>
+<div class="grid">
+  <div class="card"><h3>上下文一换就没</h3><p>上周卡在哪、已经读完哪些材料，全留在上一个会话窗口里，新开窗口等于失忆。</p></div>
+  <div class="card"><h3>AI 摘要不敢直接信</h3><p>生成的“下一步”看不出依据哪条笔记，也无法回到原文核对，只能整段重写。</p></div>
+  <div class="card"><h3>推荐不了解你的节奏</h3><p>说过“一次只学 25 分钟”，下次照旧排 6 个任务，偏好没有参与任何决策。</p></div>
+  <div class="card"><h3>多窗口互相覆盖</h3><p>两个界面改同一条待办，后写的悄悄盖掉前一个，没有任何提示。</p></div>
+  <div class="card"><h3>复盘得手写</h3><p>阶段总结要从头组织，工具很容易顺手替你补写没有记录过的“成果”。</p></div>
+  <div class="card"><h3>不知道它到底存了什么</h3><p>看不到系统真正写进存储的内容与结果，就无法判断它是真在读写还是只做样子。</p></div>
+</div>
+
+<h2>核心功能</h2>
+<p class="sub">每一项都对应界面里的一个页面，也都有一条实测记录。</p>
+<table>
+  <thead><tr><th style="width:22%">能力</th><th>实现方式</th><th style="width:26%">事实边界</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>记忆持久化</td>
+      <td>正文、待办、状态、偏好全部写入 PowerContext <code>atomic_memory</code>，本地 SQLite 落盘；重启进程后重新读回。</td>
+      <td>浏览器不存主记忆，也不是事实来源。</td>
+    </tr>
+    <tr>
+      <td>可溯源引用</td>
+      <td>每条记忆显示真实 <code>art_…</code> artifact ID、revision 与原文；界面上的建议都能点“查看出处”。</td>
+      <td>不显示不存在的引用。</td>
+    </tr>
+    <tr>
+      <td>继续学习清单</td>
+      <td>读回进度 / 薄弱点 / 偏好，输出“已完成 · 当前阻塞 · 下一步 · 参考记忆”，并写明依据的规则。</td>
+      <td>确定性规则整理，未调用任何生成式模型。</td>
+    </tr>
+    <tr>
+      <td>偏好真的影响结果</td>
+      <td>记忆里写着“一次学 25 分钟”，下一步就最多排 2 项任务，同时给出规则说明与偏好出处。</td>
+      <td>时长可覆盖，覆盖值同样显示。</td>
+    </tr>
+    <tr>
+      <td>检索</td>
+      <td>直接调用 PowerContext 查询接口，中文行为已实测（“幻读”同时命中笔记与薄弱点）。</td>
+      <td>全文检索，不是语义检索：未配置 embedding，实测 <code>embedding_calls=0</code>；查不到就返回空并说明。</td>
+    </tr>
+    <tr>
+      <td>待办与冲突</td>
+      <td>状态以追加式 <code>task_status</code> 事件保存，携带期望序号；旧序号写入返回 409 并提示刷新。</td>
+      <td>1.5.1 无公开正文修订入口，因此不声称“已更新原记忆”；冲突保护只在单进程内有效。</td>
+    </tr>
+    <tr>
+      <td>复盘导出</td>
+      <td>按实际记忆与待办生成 UTF-8 Markdown，逐条带引用，顶部标注“需本人核对”。</td>
+      <td>不补写没有记录的成果、数字或评价。</td>
+    </tr>
+    <tr>
+      <td>验证记录</td>
+      <td>记录应用对 PowerContext 的写入、读回、查询、状态更新与冲突结果，页面直接可查。</td>
+      <td>只记操作与结果，不记密码与令牌。</td>
+    </tr>
+    <tr>
+      <td>工作区隔离</td>
+      <td>一个工作区映射一个 PowerContext scope，导入演示数据写进独立演示 scope。</td>
+      <td>scope 是数据选取边界，不是账号认证。</td>
+    </tr>
+    <tr>
+      <td>断开可见</td>
+      <td>连接状态来自真实探测；断开后 <code>/api/health</code> 返回 503，界面显示“读不到”而不是回显旧数据。</td>
+      <td>不提供多用户 / 云端服务承诺。</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2 id="shots">真实截图</h2>
+<p class="sub">作者本机 Chrome 对运行中的 <code>http://127.0.0.1:8712/</code> 截图（非设计稿、非示意图）。</p>
+<div class="shots">
+  <figure><img src="screenshots/overview.png" alt="总览页面截图" loading="lazy">
+    <figcaption>总览：本次要继续的任务、最近学习记录、仍待解决的薄弱点；顶部显示真实服务连接状态。</figcaption></figure>
+  <figure><img src="screenshots/memories.png" alt="记忆库页面截图" loading="lazy">
+    <figcaption>记忆库：类别色标 + 原文 + PowerContext artifact ID 与 revision。</figcaption></figure>
+  <figure><img src="screenshots/continue.png" alt="继续学习页面截图" loading="lazy">
+    <figcaption>继续学习：已完成 / 当前阻塞 / 下一步 / 参考记忆；25 分钟 ⇒ 2 项任务，并写明规则与偏好出处。</figcaption></figure>
+  <figure><img src="screenshots/search.png" alt="检索页面截图" loading="lazy">
+    <figcaption>检索：PowerContext 真实查询结果与精确引用，页面同时标明这是全文检索。</figcaption></figure>
+  <figure><img src="screenshots/tasks.png" alt="待办页面截图" loading="lazy">
+    <figcaption>待办：状态显示事件序号；旧序号写入被拒时给出冲突原因与刷新入口。</figcaption></figure>
+  <figure><img src="screenshots/export.png" alt="复盘导出页面截图" loading="lazy">
+    <figcaption>复盘导出：Markdown 初稿逐条带引用，并提示需本人核对。</figcaption></figure>
+  <figure><img src="screenshots/validation.png" alt="验证记录页面截图" loading="lazy">
+    <figcaption>验证记录：对 PowerContext 的真实操作流水（写入 / 读回 / 查询 / 状态更新与冲突）。</figcaption></figure>
+  <figure><img src="screenshots/mobile-continue.png" alt="移动端 390×844 继续学习截图" loading="lazy">
+    <figcaption>移动端 390×844：同一页面的真实渲染，导航与内容可正常操作。</figcaption></figure>
+</div>
+
+<h2 id="run">运行说明</h2>
+<p class="sub">需求：Python 3.11 / 3.12、可访问 PyPI。全程只在本机监听 127.0.0.1:8712。</p>
+<pre><span class="c"># 1) 取代码（仓库为 oceanbase/powercontext 的赛事分支，项目在 qoder/ 目录）</span>
+git clone -b studyflow-qoder-20261116 https://github.com/liumengcong/powercontext.git
+cd powercontext/qoder
+<span class="c"># 该分支由作者本人推送；若暂时拉不到，直接在你手上的 qoder/ 目录里执行后续命令</span>
+
+<span class="c"># 2) 建环境并装依赖（powercontext[builtin]==1.5.1 等，见 requirements.txt）</span>
+python3.12 -m venv .venv &amp;&amp; source .venv/bin/activate
+pip install -r requirements.txt
+
+<span class="c"># 3) 启动（一条命令也可以：./快速开始.sh）</span>
+python -m backend.app
+<span class="c"># → 浏览器打开 http://127.0.0.1:8712/，点左下「导入演示数据」</span>
+
+<span class="c"># 4) 自测：20 项测试（其中 5 项跑真实 PowerContext runtime）</span>
+python -m pytest tests/
+
+<span class="c"># 5) 端到端演练：启动 3 个真实进程，完成 2 次重启，逐项跑验收样例 1–6</span>
+python scripts/acceptance_drill.py
+<span class="c"># → 证据写入 docs/evidence/&lt;时间戳&gt;/（evidence.json、server-*.log、导出的复盘 md）</span></pre>
+<p>数据落在 <code>qoder/data/powercontext.db</code>（SQLite），删除该文件等于清空本机记忆，
+因此它不进入版本库。故障排查、依赖版本与接口调用点见
+<a href="https://github.com/liumengcong/powercontext/tree/studyflow-qoder-20261116/qoder">源码目录里的 README.md</a>。</p>
+
+<h2 id="try">体验入口</h2>
+<div class="card">
+  <p><b>在自己的电脑上体验完整功能。</b>展示页以真实截图和可复现证据介绍项目。</p>
+  <ul class="check">
+    <li>想看界面：见上方截图，全部来自本机真实运行。</li>
+    <li>想动手操作：按运行说明安装依赖并启动，再导入合成演示数据。</li>
+    <li>想核对结果：仓库 <code>docs/evidence/</code> 内是脚本真实产出的日志与 JSON，包含真实的 scope / artifact ID。</li>
+  </ul>
+</div>
+
+<h2>已做过的验证</h2>
+<p class="sub">只列实际执行过的命令与结果，未列的一律视为未验证。</p>
+<table>
+  <thead><tr><th style="width:32%">检查</th><th>结果</th></tr></thead>
+  <tbody>
+    <tr><td>单元 + 集成测试</td><td><code>pytest tests/</code> → 20 passed（5 项为真实 PowerContext runtime，非 mock）</td></tr>
+    <tr><td>跨进程读回</td><td>启动 3 个真实进程，使用 SIGTERM 完成 2 次重启，同一 scope 读回进度、偏好与待办状态</td></tr>
+    <tr><td>偏好影响下一步</td><td><code>available_minutes=25</code> → <code>max_tasks=2</code>，并返回规则说明与出处</td></tr>
+    <tr><td>并发保护</td><td>两个请求同带 <code>expected_seq=5</code> → <code>[200, 409]</code>，最终只剩一条最新事件；临时去掉应用锁时，同一回归测试实测失败</td></tr>
+    <tr><td>中文检索</td><td>查询“幻读”同时命中笔记与薄弱点；<code>matched_by=["text"]</code>、<code>embedding_calls=0</code>；空结果返回空列表并说明</td></tr>
+    <tr><td>导出</td><td>UTF-8，<code>Content-Type: text/markdown; charset=utf-8</code>，3162 字节、12 处 <code>art_</code> 引用</td></tr>
+    <tr><td>工作区隔离</td><td>新工作区读到 0 条，写入后不混入演示 scope</td></tr>
+    <tr><td>端到端演练汇总</td><td>12 项检查、0 失败，证据 <code>docs/evidence/20261116-112831/</code></td></tr>
+  </tbody>
+</table>
+
+<h2>使用范围</h2>
+<ul class="warn">
+  <li>PowerContext 内置 runtime + 本地 SQLite，适合个人电脑上的单用户、单进程运行。</li>
+  <li>中文全文检索与确定性规则续学，无需配置生成式模型或 embedding 服务。</li>
+  <li>展示与验收使用明确标注的合成演示数据；尚未收集真实试用者反馈和提效统计。</li>
+</ul>
+
+<h2>来源与许可</h2>
+<div class="card">
+  <ul class="check">
+    <li>本项目源码（<code>qoder/</code>）：Apache License 2.0，见仓库 <code>qoder/LICENSE</code>。</li>
+    <li>核心记忆组件：<a href="https://github.com/oceanbase/powercontext">oceanbase/powercontext</a>（Apache-2.0），实装版本 <code>powercontext[builtin]==1.5.1</code>；<a href="https://powercontext.oceanbase.io/en/docs/">官方文档</a>。中文分词依赖 <code>jieba</code>（MIT），停用词表来自 <code>stopwords-iso</code>（MIT），随上游包分发。</li>
+    <li>开发分支基础提交：<code>d647275c308e09b7b623f322a26f5c4e85734fb0</code>（<code>2026-competition-ecosystem</code>）。</li>
+    <li>赛题：<a href="https://open.oceanbase.com/train/TopicDetails?questionId=600078&amp;subQesitonId=800515">用 Qoder 做一个让学习、科研和工作更高效的项目</a>。</li>
+  </ul>
+  <div class="quote">本项目与 OceanBase / PowerContext 的关系是“使用其开源组件”，不是官方发行版，也不代表上游项目。</div>
+</div>
+
+</div>
+
+<footer>
+  <div class="wrap">
+    研习台 StudyFlow · 用 Qoder CN 完成主要开发与实测 · 页面为静态展示，无后端与统计代码。
+  </div>
+</footer>
+
+</body>
+</html>

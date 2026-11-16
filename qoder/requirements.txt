@@ -1,0 +1,11 @@
+# 研习台 StudyFlow 直接依赖（本机实测版本，Python 3.12）
+# 完整版本快照见 requirements.lock.txt
+powercontext[builtin]==1.5.1
+fastapi==0.163.1
+uvicorn==0.54.0
+pydantic==2.14.3
+httpx==0.28.1
+
+# 测试
+pytest==9.2.0
+pytest-asyncio==1.5.0

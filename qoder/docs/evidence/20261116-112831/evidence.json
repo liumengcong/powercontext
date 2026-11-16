@@ -1,0 +1,262 @@
+{
+  "schema": "studyflow.acceptance.v1",
+  "run_at": "2026-11-16T19:28:44+08:00",
+  "environment": {
+    "python": "Python 3.12.14",
+    "powercontext": "1.5.1",
+    "fastapi": "0.163.1",
+    "uvicorn": "0.54.0",
+    "command": "python scripts/acceptance_drill.py --port 8713",
+    "data_dir": "/Users/liumengcong/Documents/Codex/2026-11-16/https-open-oceanbase-com-train-topicdetails-10/outputs/StudyFlow/qoder/data",
+    "server_launches": [
+      "STUDYFLOW_DATA_DIR=/Users/liumengcong/Documents/Codex/2026-11-16/https-open-oceanbase-com-train-topicdetails-10/outputs/StudyFlow/qoder/data python -m backend.app  (http://127.0.0.1:8713)",
+      "STUDYFLOW_DATA_DIR=/Users/liumengcong/Documents/Codex/2026-11-16/https-open-oceanbase-com-train-topicdetails-10/outputs/StudyFlow/qoder/data python -m backend.app  (http://127.0.0.1:8713)",
+      "STUDYFLOW_DATA_DIR=/Users/liumengcong/Documents/Codex/2026-11-16/https-open-oceanbase-com-train-topicdetails-10/outputs/StudyFlow/qoder/data python -m backend.app  (http://127.0.0.1:8713)"
+    ],
+    "platform": "darwin"
+  },
+  "note": "全部结果来自本机真实进程与真实 PowerContext SQLite 数据；第 7 节站点公开发布需人工在浏览器完成，本文件不做声称。",
+  "checks": [
+    {
+      "check": "1. 干净环境启动并报告真实 PowerContext 状态",
+      "passed": true,
+      "detail": {
+        "connected": true,
+        "powercontext_package": "1.5.1",
+        "runtime_mode": "builtin-in-process (SQLite)",
+        "database": "/Users/liumengcong/Documents/Codex/2026-11-16/https-open-oceanbase-com-train-topicdetails-10/outputs/StudyFlow/qoder/data/powercontext.db",
+        "bound_to": "127.0.0.1:8713",
+        "scope_id": "scp_298qshysc1gr03csmcaw6nr5h7",
+        "counts": {
+          "total": 10,
+          "active": 10
+        },
+        "search_note": "检索使用 PowerContext SQLite FTS5 全文索引；未配置 embedding 模型，因此不宣称语义检索。"
+      }
+    },
+    {
+      "check": "2a. 导入 sample-data.json 且重复导入不新增",
+      "passed": true,
+      "detail": {
+        "workspace": "studyflow-demo",
+        "scope_id": "scp_298qshysc1gr03csmcaw6nr5h7",
+        "requested": 6,
+        "created_now_first": 0,
+        "created_now_second": 0,
+        "skipped_duplicate_second": 6,
+        "total_memories": 10,
+        "source_of_truth": "powercontext",
+        "artifacts": {
+          "weakness": "art_153718006ba54d0fb97a6ca084bc4fa8",
+          "preference": "art_2629cfc068aa4d7e84cc8385187eb00b",
+          "note": "art_65605bc980c34ae1877a737f0989d0bc",
+          "progress": "art_8a11071114154ba1a8bee13843452943",
+          "task_status": "art_e8bc2cda33704f63b646a24fc1b231bb"
+        }
+      }
+    },
+    {
+      "check": "2b. 检索“幻读”返回真实原文与 PowerContext 引用",
+      "passed": true,
+      "detail": {
+        "query": "幻读",
+        "mode": "text",
+        "hit_count": 9,
+        "referenced_keys": [
+          "key=demo-note-isolation",
+          "key=demo-weak-phantom"
+        ],
+        "embedding_calls": 0,
+        "first_hit": {
+          "artifact_id": "art_8a11071114154ba1a8bee13843452943",
+          "revision": 1,
+          "kind": "progress",
+          "matched_by": [
+            "text"
+          ],
+          "quote": "已完成脏读和不可重复读的概念整理；尚未完成幻读案例；下次从事务隔离级别的对照表继续。"
+        }
+      }
+    },
+    {
+      "check": "2c. 检索不存在的词返回空结果且不编造",
+      "passed": true,
+      "detail": {
+        "hits": [],
+        "empty_message": "PowerContext 未返回匹配记忆，应用不会编造结果。"
+      }
+    },
+    {
+      "check": "3. 杀掉进程重启后从 PowerContext 读回偏好/进度/薄弱点",
+      "passed": true,
+      "detail": {
+        "scope_before": "scp_298qshysc1gr03csmcaw6nr5h7",
+        "scope_after": "scp_298qshysc1gr03csmcaw6nr5h7",
+        "process": "旧进程已 SIGTERM 退出，新进程 PID 不同",
+        "pid_change": {
+          "old_stopped": true,
+          "new_pid": 9904
+        },
+        "available_minutes": 25,
+        "max_tasks": 2,
+        "preference_source": {
+          "artifact_id": "art_2629cfc068aa4d7e84cc8385187eb00b",
+          "revision": 1,
+          "family": "atomic-memory",
+          "kind": "preference",
+          "description": "演示学习偏好 · key=demo-pref-25",
+          "quote": "我的单次学习时间为 25 分钟，优先复习薄弱知识点，每次最多安排两个任务。",
+          "state": "active",
+          "state_version": 0
+        },
+        "rules": [
+          "从偏好原文读取“25 分钟”，规则：单次可用时长 = 25 分钟",
+          "偏好原文未写任务上限，按时长分档规则（≤15→1，≤45→2，≤90→3，>90→4）得到 2 项",
+          "偏好原文提到“薄弱”，薄弱点相关的待办排在前面"
+        ],
+        "next_steps": [
+          {
+            "text": "复习数据库事务笔记，核对幻读和不可重复读的示例。",
+            "reason": "与薄弱点共享 7 个中文二元组，且仍为待办",
+            "artifact_id": "art_15d22777f6fe4d0f91ee07d8549008f1"
+          }
+        ],
+        "blocked_count": 1,
+        "recorded_progress_quote": "已完成脏读和不可重复读的概念整理；尚未完成幻读案例；下次从事务隔离级别的对照表继续。",
+        "reference_count": 5,
+        "explanation": [
+          "下一步最多 2 项来自偏好与分档规则，不是模型推断。",
+          "每项建议都指向一条真实 PowerContext atomic-memory artifact（含 artifact_id 与 revision）。",
+          "没有记录的内容（用时、论文数量、提效比例）不会出现在这里。"
+        ],
+        "counts_after_restart": {
+          "total": 10,
+          "active": 10
+        }
+      }
+    },
+    {
+      "check": "4a. 标记完成写入真实 task_status 事件",
+      "passed": true,
+      "detail": {
+        "task_artifact_id": "art_355a139d3bb94a3ebae0b8ca53e581a4",
+        "task_body_revision": 1,
+        "event_artifact_id": "art_e1424881560f43c293e8df50f625ae8f",
+        "event_revision": 1,
+        "seq_before": 4,
+        "seq_after": 5,
+        "status_model_note": "完成/恢复都追加一条 task_status 事件记忆；任务正文 artifact 的 revision 保持不变。",
+        "honesty_note": "任务正文 revision 仍为 1：状态是追加的事件，不声称内容被改写"
+      }
+    },
+    {
+      "check": "4b. 用旧 expected_seq 更新被拒绝，不静默覆盖",
+      "passed": true,
+      "detail": {
+        "http_status": 409,
+        "code": "version_conflict",
+        "message": "待办状态已被更新（服务端最新事件 seq=5，请求携带 expected_seq=0）。为避免覆盖并发修改，本次写入已取消，请刷新后重试。",
+        "current_seq": 5
+      }
+    },
+    {
+      "check": "4b2. 同一 expected_seq 的并发写入只成功一次",
+      "passed": true,
+      "detail": {
+        "expected_seq_sent_by_both": 5,
+        "http_status_codes": [
+          200,
+          409
+        ],
+        "rejected_message": "待办状态已被更新（服务端最新事件 seq=6，请求携带 expected_seq=5）。为避免覆盖并发修改，本次写入已取消，请刷新后重试。",
+        "event_seq_after": 6,
+        "status_events_total": 6,
+        "lock_scope": "单进程 uvicorn 内的 asyncio.Lock；跨进程不保证，README 已写明"
+      }
+    },
+    {
+      "check": "4c. 再次重启后完成状态仍在、未完成的仍为待办",
+      "passed": true,
+      "detail": {
+        "target_status": "done",
+        "target_event_seq": 6,
+        "other_status": "todo",
+        "other_expected": "todo",
+        "items": [
+          {
+            "text": "复习数据库事务笔记，核对幻读和不可重复读的示例。",
+            "status": "todo"
+          },
+          {
+            "text": "整理事务隔离级别对照表，并为幻读写一个两事务并发",
+            "status": "done"
+          }
+        ]
+      }
+    },
+    {
+      "check": "5. 切换工作区互不可见，scope 只是数据边界",
+      "passed": true,
+      "detail": {
+        "isolation_workspace": "隔离演练-临时工作区-20261116-112831",
+        "demo_scope": "scp_298qshysc1gr03csmcaw6nr5h7",
+        "demo_count": 12,
+        "isolation_scope": "scp_3ctx4trswxbxjsnq02ywrrva9f",
+        "isolation_count_before_write": 0,
+        "written_in_isolation": "art_a730ec04eb094f6cb745e70a436e4e38",
+        "back_to_demo_scope": "scp_298qshysc1gr03csmcaw6nr5h7",
+        "demo_count_after_switch_back": 12,
+        "cross_scope_search_hits_for_marker": [],
+        "workspaces_note": "scope 只是本地数据选取边界，不是用户认证。"
+      }
+    },
+    {
+      "check": "6. 导出 UTF-8 Markdown 复盘初稿，只使用真实记录",
+      "passed": true,
+      "detail": {
+        "http_status": 200,
+        "content_type": "text/markdown; charset=utf-8",
+        "content_disposition": "attachment; filename=\"studyflow-review.md\"",
+        "bytes": 3162,
+        "citation_count": 12,
+        "saved_to": "docs/evidence/20261116-112831/studyflow-review.md",
+        "sections": [
+          "## 本次可用时长与任务上限",
+          "## 已完成",
+          "## 仍未解决",
+          "## 下一步",
+          "## 记忆引用清单",
+          "## 需要本人核对"
+        ],
+        "invented_number_lines": [],
+        "head": [
+          "# 学习复盘初稿",
+          "",
+          "- 工作区：studyflow-demo",
+          "- PowerContext scope：`scp_298qshysc1gr03csmcaw6nr5h7`",
+          "- 生成时间：2026-11-16T19:28:43+08:00",
+          "- 生成方式：rule-based-v1（规则整理，未调用任何生成式模型）"
+        ]
+      }
+    },
+    {
+      "check": "验证记录只记操作、不含凭据",
+      "passed": true,
+      "detail": {
+        "log_path": "/Users/liumengcong/Documents/Codex/2026-11-16/https-open-oceanbase-com-train-topicdetails-10/outputs/StudyFlow/qoder/data/validation-log.jsonl",
+        "operations": [
+          "continuation.build",
+          "memory.create",
+          "review.export",
+          "sample.import",
+          "search",
+          "task.status.change",
+          "task.status.conflict",
+          "workspace.use"
+        ],
+        "entries": 126,
+        "secret_like_entries": []
+      }
+    }
+  ]
+}

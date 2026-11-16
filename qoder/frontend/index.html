@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>研习台 StudyFlow · 让下一次学习，从上次的进展继续</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2314868c'/%3E%3Cpath d='M9 22V10h6a4 4 0 0 1 0 8H9' stroke='white' stroke-width='2.4' fill='none'/%3E%3C/svg%3E" />
+  </head>
+  <body>
+    <div class="layout">
+      <aside class="sidebar">
+        <div class="brand">
+          <span class="brand-mark"></span>
+          <div>
+            <strong>研习台</strong>
+            <em>StudyFlow</em>
+          </div>
+        </div>
+        <nav id="nav" aria-label="主导航">
+          <a href="#/overview" data-view="overview">总览</a>
+          <a href="#/memories" data-view="memories">记忆库</a>
+          <a href="#/continue" data-view="continue">继续学习</a>
+          <a href="#/search" data-view="search">检索</a>
+          <a href="#/tasks" data-view="tasks">待办</a>
+          <a href="#/export" data-view="export">复盘导出</a>
+          <a href="#/validation" data-view="validation">验证记录</a>
+        </nav>
+        <div class="side-block">
+          <label for="workspace-select">工作区</label>
+          <div class="workspace-row">
+            <select id="workspace-select" aria-label="选择工作区"></select>
+            <button id="new-workspace" class="ghost" title="新建工作区">＋</button>
+          </div>
+          <p class="hint">scope 仅划分本地数据边界，不是账号认证。</p>
+        </div>
+        <div class="side-block">
+          <button id="import-demo" class="accent">导入演示数据</button>
+          <p class="hint" id="import-hint">使用 sample-data.json，写入独立演示 scope；重复点击不会重复创建。</p>
+        </div>
+        <div class="side-foot">
+          <span class="engine" id="engine-tag">规则整理</span>
+          <span class="pkg" id="pkg-tag">powercontext</span>
+        </div>
+      </aside>
+
+      <main class="content">
+        <header class="topbar">
+          <div>
+            <h1>今天，从上次的进展继续</h1>
+            <p class="sub" id="scope-line">正在连接 PowerContext…</p>
+          </div>
+          <div id="conn" class="conn checking" role="status" aria-live="polite">
+            <span class="dot"></span><span id="conn-text">检查中</span>
+          </div>
+        </header>
+        <div id="banner" class="banner" hidden></div>
+        <section id="view" class="view" aria-live="polite"></section>
+      </main>
+    </div>
+    <div id="toast" class="toast" hidden></div>
+    <div id="modal" class="modal" hidden>
+      <div class="modal-card">
+        <h3 id="modal-title">出处</h3>
+        <div id="modal-body"></div>
+        <div class="modal-actions"><button id="modal-close" class="ghost">关闭</button></div>
+      </div>
+    </div>
+    <script src="/static/app.js"></script>
+  </body>
+</html>

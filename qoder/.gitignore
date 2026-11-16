@@ -1,0 +1,31 @@
+# 本地运行数据：PowerContext SQLite、调度器、导入映射、验证记录。
+# 不提交，避免把个人记忆和凭据带进仓库。
+data/
+!data/.gitkeep
+.pytest-tmp/
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# 环境与密钥
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+
+# 系统
+.DS_Store
+
+# 本机探测与 Sites 恢复记录不进入参赛源码
+.probe*
+*.qoder.site
+.qoder/

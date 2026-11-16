@@ -1,0 +1,31 @@
+{
+  "date": "2026-11-16T12:03:33.013929+00:00",
+  "site_url": "https://studyflow-uyxsdatsqos.qoder.zone",
+  "authentication": "No Cookie or Authorization header; fresh urllib requests",
+  "checks": [
+    {
+      "path": "/",
+      "status": 200,
+      "url": "https://studyflow-uyxsdatsqos.qoder.zone/",
+      "bytes": 74376,
+      "sha256": "5abfc8ee46c6ba610ddbf776231f82a188a0f289997089e74fc5e5751622628b",
+      "content_type": "text/html; charset=utf-8"
+    },
+    {
+      "path": "/screenshots/overview.png",
+      "status": 200,
+      "url": "https://studyflow-uyxsdatsqos.qoder.zone/screenshots/overview.png",
+      "bytes": 222262,
+      "sha256": "c294d404bb2e0dd01af01596464b6b3223dd4aeda8bc2003cd7d4114975a8beb",
+      "content_type": "image/png"
+    },
+    {
+      "path": "/screenshots/mobile-continue.png",
+      "status": 200,
+      "url": "https://studyflow-uyxsdatsqos.qoder.zone/screenshots/mobile-continue.png",
+      "bytes": 79446,
+      "sha256": "80866c694776822910da9984f4873fd6147541a3a54560e24826d22b8369da09",
+      "content_type": "image/png"
+    }
+  ]
+}

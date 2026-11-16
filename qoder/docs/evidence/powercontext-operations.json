@@ -1,0 +1,151 @@
+{
+  "items": [
+    {
+      "recorded_at": "2026-11-16T19:26:38+08:00",
+      "operation": "workspace.use",
+      "workspace": "studyflow-demo",
+      "scope_id": "scp_2wb71p0sk3nk4jjr3yg4am0df2"
+    },
+    {
+      "recorded_at": "2026-11-16T19:26:38+08:00",
+      "operation": "workspace.use",
+      "workspace": "acceptance-empty",
+      "scope_id": "scp_0vs8z9w080mp8sv96ahkg2ef6g"
+    },
+    {
+      "recorded_at": "2026-11-16T19:26:38+08:00",
+      "operation": "continuation.build",
+      "workspace": "studyflow-demo",
+      "scope_id": "scp_2wb71p0sk3nk4jjr3yg4am0df2",
+      "read_from": "powercontext",
+      "memories_read": 7,
+      "suggested": 1,
+      "engine": "rule-based-v1"
+    },
+    {
+      "recorded_at": "2026-11-16T19:26:34+08:00",
+      "operation": "review.export",
+      "workspace": "studyflow-demo",
+      "scope_id": "scp_2wb71p0sk3nk4jjr3yg4am0df2",
+      "bytes": 3162,
+      "citations": 5
+    },
+    {
+      "recorded_at": "2026-11-16T19:26:34+08:00",
+      "operation": "continuation.build",
+      "workspace": "studyflow-demo",
+      "scope_id": "scp_2wb71p0sk3nk4jjr3yg4am0df2",
+      "read_from": "powercontext",
+      "memories_read": 7,
+      "suggested": 1,
+      "engine": "rule-based-v1"
+    },
+    {
+      "recorded_at": "2026-11-16T19:26:34+08:00",
+      "operation": "task.status.conflict",
+      "workspace": "studyflow-demo",
+      "scope_id": "scp_2wb71p0sk3nk4jjr3yg4am0df2",
+      "artifact_id": "art_4fb742d6324f49398aa5015ef43a880b",
+      "expected_seq": 0,
+      "current_seq": 1,
+      "outcome": "rejected"
+    },
+    {
+      "recorded_at": "2026-11-16T19:26:34+08:00",
+      "operation": "task.status.change",
+      "workspace": "studyflow-demo",
+      "scope_id": "scp_2wb71p0sk3nk4jjr3yg4am0df2",
+      "task_artifact_id": "art_4fb742d6324f49398aa5015ef43a880b",
+      "task_revision": 1,
+      "status": "done",
+      "seq": 1,
+      "event_artifact_id": "art_085f4aadd3cf461e8d303ff9e4400aa3",
+      "event_revision": 1,
+      "mechanism": "append-only task_status memory in PowerContext, guarded by one in-process asyncio.Lock"
+    },
+    {
+      "recorded_at": "2026-11-16T19:26:34+08:00",
+      "operation": "continuation.build",
+      "workspace": "studyflow-demo",
+      "scope_id": "scp_2wb71p0sk3nk4jjr3yg4am0df2",
+      "read_from": "powercontext",
+      "memories_read": 6,
+      "suggested": 2,
+      "engine": "rule-based-v1"
+    },
+    {
+      "recorded_at": "2026-11-16T19:26:34+08:00",
+      "operation": "search",
+      "workspace": "studyflow-demo",
+      "scope_id": "scp_2wb71p0sk3nk4jjr3yg4am0df2",
+      "query": "不存在的火星词语",
+      "mode": "text",
+      "hits": 0,
+      "artifact_ids": []
+    },
+    {
+      "recorded_at": "2026-11-16T19:26:34+08:00",
+      "operation": "search",
+      "workspace": "studyflow-demo",
+      "scope_id": "scp_2wb71p0sk3nk4jjr3yg4am0df2",
+      "query": "幻读",
+      "mode": "text",
+      "hits": 5,
+      "artifact_ids": [
+        "art_e3866f5922764a57b60cffbd248b8aa3",
+        "art_2004288673d3406799adb5233eb63259",
+        "art_f29a000c26d948bdba807bcad83dbb9a",
+        "art_bc68d9c329f849809cb906ca0989f1d0",
+        "art_4fb742d6324f49398aa5015ef43a880b"
+      ]
+    },
+    {
+      "recorded_at": "2026-11-16T19:26:34+08:00",
+      "operation": "sample.import",
+      "workspace": "studyflow-demo",
+      "scope_id": "scp_2wb71p0sk3nk4jjr3yg4am0df2",
+      "requested": 6,
+      "created_now": 0,
+      "skipped_duplicate": 6,
+      "total_memories": 6,
+      "artifacts": {}
+    },
+    {
+      "recorded_at": "2026-11-16T19:26:34+08:00",
+      "operation": "sample.import",
+      "workspace": "studyflow-demo",
+      "scope_id": "scp_2wb71p0sk3nk4jjr3yg4am0df2",
+      "requested": 6,
+      "created_now": 6,
+      "skipped_duplicate": 0,
+      "total_memories": 6,
+      "artifacts": {
+        "art_da579a1f62fc4de9be842749b530bbff": [
+          1,
+          "preference"
+        ],
+        "art_bc68d9c329f849809cb906ca0989f1d0": [
+          1,
+          "note"
+        ],
+        "art_f29a000c26d948bdba807bcad83dbb9a": [
+          1,
+          "weakness"
+        ],
+        "art_2004288673d3406799adb5233eb63259": [
+          1,
+          "progress"
+        ],
+        "art_4fb742d6324f49398aa5015ef43a880b": [
+          1,
+          "task"
+        ],
+        "art_e3866f5922764a57b60cffbd248b8aa3": [
+          1,
+          "task"
+        ]
+      }
+    }
+  ],
+  "path": "/Users/liumengcong/Documents/Codex/2026-11-16/https-open-oceanbase-com-train-topicdetails-10/work/acceptance-data-20261116T192629/validation-log.jsonl"
+}

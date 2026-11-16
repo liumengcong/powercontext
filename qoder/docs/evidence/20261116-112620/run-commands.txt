@@ -1,0 +1,9 @@
+验收演练命令：cd qoder && /Users/liumengcong/Documents/Codex/2026-11-16/https-open-oceanbase-com-train-topicdetails-10/work/pc-env/bin/python scripts/acceptance_drill.py --port 8713
+STUDYFLOW_DATA_DIR=/Users/liumengcong/Documents/Codex/2026-11-16/https-open-oceanbase-com-train-topicdetails-10/outputs/StudyFlow/qoder/data python -m backend.app  (http://127.0.0.1:8713)
+STUDYFLOW_DATA_DIR=/Users/liumengcong/Documents/Codex/2026-11-16/https-open-oceanbase-com-train-topicdetails-10/outputs/StudyFlow/qoder/data python -m backend.app  (http://127.0.0.1:8713)
+STUDYFLOW_DATA_DIR=/Users/liumengcong/Documents/Codex/2026-11-16/https-open-oceanbase-com-train-topicdetails-10/outputs/StudyFlow/qoder/data python -m backend.app  (http://127.0.0.1:8713)
+
+生成的服务器日志：
+docs/evidence/20261116-112620/server-1.log
+docs/evidence/20261116-112620/server-2.log
+docs/evidence/20261116-112620/server-3.log

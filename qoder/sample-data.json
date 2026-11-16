@@ -1,0 +1,18 @@
+{
+  "schema": "studyflow.sample.v1",
+  "disclaimer": "合成演示资料，用于软件验证，不代表真实用户或真实学习成果。",
+  "workspace": "studyflow-demo",
+  "memories": [
+    {"key": "demo-pref-25", "kind": "preference", "text": "我的单次学习时间为 25 分钟，优先复习薄弱知识点，每次最多安排两个任务。", "source": "演示学习偏好"},
+    {"key": "demo-note-isolation", "kind": "note", "text": "数据库事务隔离复习笔记：脏读是读到另一个事务尚未提交的数据；不可重复读是在同一事务中多次读取同一行得到不同结果；幻读涉及符合条件的行集合变化。", "source": "演示课程笔记 01"},
+    {"key": "demo-weak-phantom", "kind": "weakness", "text": "我还不能用例子解释幻读与不可重复读的区别，需要完成两组 SQL 事务执行顺序练习。", "source": "演示自评 01"},
+    {"key": "demo-progress", "kind": "progress", "text": "已完成脏读和不可重复读的概念整理；尚未完成幻读案例；下次从事务隔离级别的对照表继续。", "source": "演示进度 01"},
+    {"key": "demo-task-table", "kind": "task", "text": "整理事务隔离级别对照表，并为幻读写一个两事务并发的示例。", "source": "演示待办 01", "status": "todo"},
+    {"key": "demo-task-review", "kind": "task", "text": "复习数据库事务笔记，核对幻读和不可重复读的示例。", "source": "演示待办 02", "status": "todo"}
+  ],
+  "validation": {
+    "query": "幻读",
+    "must_reference_keys": ["demo-note-isolation", "demo-weak-phantom"],
+    "continuation_constraints": ["读回 25 分钟偏好", "建议不超过两个任务", "包含未完成的幻读案例", "每项显示真实记忆引用"]
+  }
+}

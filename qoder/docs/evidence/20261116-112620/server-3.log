@@ -1,0 +1,19 @@
+INFO:     Started server process [9654]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8713 (Press CTRL+C to quit)
+INFO:     127.0.0.1:55657 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55658 - "GET /api/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55659 - "GET /api/memories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55661 - "POST /api/workspaces HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55662 - "GET /api/memories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55663 - "POST /api/memories HTTP/1.1" 201 Created
+INFO:     127.0.0.1:55664 - "POST /api/workspaces HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55665 - "GET /api/memories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55666 - "POST /api/search HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55667 - "GET /api/workspaces HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55668 - "GET /api/review/export HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [9654]

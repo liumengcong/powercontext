@@ -1,0 +1,836 @@
+{
+  "date": "2026-11-16",
+  "data": "synthetic demonstration data; no user outcome metrics",
+  "checks": [
+    {
+      "check": "真实 PowerContext 1.5.1 运行",
+      "passed": true,
+      "details": "builtin-in-process (SQLite)"
+    },
+    {
+      "check": "导入六条合成演示记忆",
+      "passed": true,
+      "details": {
+        "workspace": "studyflow-demo",
+        "scope_id": "scp_2wb71p0sk3nk4jjr3yg4am0df2",
+        "requested": 6,
+        "created_now": 6,
+        "skipped_duplicate": 0,
+        "total_memories": 6,
+        "created": [
+          {
+            "artifact_id": "art_da579a1f62fc4de9be842749b530bbff",
+            "revision": 1,
+            "family": "atomic-memory",
+            "kind": "preference",
+            "text": "我的单次学习时间为 25 分钟，优先复习薄弱知识点，每次最多安排两个任务。",
+            "description": "演示学习偏好 · key=demo-pref-25",
+            "state": "active",
+            "state_version": 0,
+            "source_ids": [
+              "src_8629a619b2a64252a31fc2f3a6bfc95e"
+            ],
+            "content_schema": "powercontext.atomic-memory.v1",
+            "citation": {
+              "artifact_id": "art_da579a1f62fc4de9be842749b530bbff",
+              "revision": 1,
+              "family": "atomic-memory",
+              "kind": "preference",
+              "description": "演示学习偏好 · key=demo-pref-25",
+              "quote": "我的单次学习时间为 25 分钟，优先复习薄弱知识点，每次最多安排两个任务。",
+              "state": "active",
+              "state_version": 0
+            }
+          },
+          {
+            "artifact_id": "art_bc68d9c329f849809cb906ca0989f1d0",
+            "revision": 1,
+            "family": "atomic-memory",
+            "kind": "note",
+            "text": "数据库事务隔离复习笔记：脏读是读到另一个事务尚未提交的数据；不可重复读是在同一事务中多次读取同一行得到不同结果；幻读涉及符合条件的行集合变化。",
+            "description": "演示课程笔记 01 · key=demo-note-isolation",
+            "state": "active",
+            "state_version": 0,
+            "source_ids": [
+              "src_de162b5712854ecfab184c6c70f29bed"
+            ],
+            "content_schema": "powercontext.atomic-memory.v1",
+            "citation": {
+              "artifact_id": "art_bc68d9c329f849809cb906ca0989f1d0",
+              "revision": 1,
+              "family": "atomic-memory",
+              "kind": "note",
+              "description": "演示课程笔记 01 · key=demo-note-isolation",
+              "quote": "数据库事务隔离复习笔记：脏读是读到另一个事务尚未提交的数据；不可重复读是在同一事务中多次读取同一行得到不同结果；幻读涉及符合条件的行集合变化。",
+              "state": "active",
+              "state_version": 0
+            }
+          },
+          {
+            "artifact_id": "art_f29a000c26d948bdba807bcad83dbb9a",
+            "revision": 1,
+            "family": "atomic-memory",
+            "kind": "weakness",
+            "text": "我还不能用例子解释幻读与不可重复读的区别，需要完成两组 SQL 事务执行顺序练习。",
+            "description": "演示自评 01 · key=demo-weak-phantom",
+            "state": "active",
+            "state_version": 0,
+            "source_ids": [
+              "src_ce85618d97a54381802e830c09e536d6"
+            ],
+            "content_schema": "powercontext.atomic-memory.v1",
+            "citation": {
+              "artifact_id": "art_f29a000c26d948bdba807bcad83dbb9a",
+              "revision": 1,
+              "family": "atomic-memory",
+              "kind": "weakness",
+              "description": "演示自评 01 · key=demo-weak-phantom",
+              "quote": "我还不能用例子解释幻读与不可重复读的区别，需要完成两组 SQL 事务执行顺序练习。",
+              "state": "active",
+              "state_version": 0
+            }
+          },
+          {
+            "artifact_id": "art_2004288673d3406799adb5233eb63259",
+            "revision": 1,
+            "family": "atomic-memory",
+            "kind": "progress",
+            "text": "已完成脏读和不可重复读的概念整理；尚未完成幻读案例；下次从事务隔离级别的对照表继续。",
+            "description": "演示进度 01 · key=demo-progress",
+            "state": "active",
+            "state_version": 0,
+            "source_ids": [
+              "src_2b085442e7644dda995138a70b93e26b"
+            ],
+            "content_schema": "powercontext.atomic-memory.v1",
+            "citation": {
+              "artifact_id": "art_2004288673d3406799adb5233eb63259",
+              "revision": 1,
+              "family": "atomic-memory",
+              "kind": "progress",
+              "description": "演示进度 01 · key=demo-progress",
+              "quote": "已完成脏读和不可重复读的概念整理；尚未完成幻读案例；下次从事务隔离级别的对照表继续。",
+              "state": "active",
+              "state_version": 0
+            }
+          },
+          {
+            "artifact_id": "art_4fb742d6324f49398aa5015ef43a880b",
+            "revision": 1,
+            "family": "atomic-memory",
+            "kind": "task",
+            "text": "整理事务隔离级别对照表，并为幻读写一个两事务并发的示例。",
+            "description": "演示待办 01 · key=demo-task-table",
+            "state": "active",
+            "state_version": 0,
+            "source_ids": [
+              "src_4b11e3f0f495430a8b1ffe408d80a246"
+            ],
+            "content_schema": "powercontext.atomic-memory.v1",
+            "citation": {
+              "artifact_id": "art_4fb742d6324f49398aa5015ef43a880b",
+              "revision": 1,
+              "family": "atomic-memory",
+              "kind": "task",
+              "description": "演示待办 01 · key=demo-task-table",
+              "quote": "整理事务隔离级别对照表，并为幻读写一个两事务并发的示例。",
+              "state": "active",
+              "state_version": 0
+            }
+          },
+          {
+            "artifact_id": "art_e3866f5922764a57b60cffbd248b8aa3",
+            "revision": 1,
+            "family": "atomic-memory",
+            "kind": "task",
+            "text": "复习数据库事务笔记，核对幻读和不可重复读的示例。",
+            "description": "演示待办 02 · key=demo-task-review",
+            "state": "active",
+            "state_version": 0,
+            "source_ids": [
+              "src_8db842b21e9c485abc953a23d9ac7cda"
+            ],
+            "content_schema": "powercontext.atomic-memory.v1",
+            "citation": {
+              "artifact_id": "art_e3866f5922764a57b60cffbd248b8aa3",
+              "revision": 1,
+              "family": "atomic-memory",
+              "kind": "task",
+              "description": "演示待办 02 · key=demo-task-review",
+              "quote": "复习数据库事务笔记，核对幻读和不可重复读的示例。",
+              "state": "active",
+              "state_version": 0
+            }
+          }
+        ],
+        "disclaimer": "合成演示资料，用于软件验证，不代表真实用户或真实学习成果。"
+      }
+    },
+    {
+      "check": "重复导入不新增",
+      "passed": true,
+      "details": {
+        "workspace": "studyflow-demo",
+        "scope_id": "scp_2wb71p0sk3nk4jjr3yg4am0df2",
+        "requested": 6,
+        "created_now": 0,
+        "skipped_duplicate": 6,
+        "total_memories": 6,
+        "created": [],
+        "disclaimer": "合成演示资料，用于软件验证，不代表真实用户或真实学习成果。"
+      }
+    },
+    {
+      "check": "中文全文检索与 artifact 出处",
+      "passed": true,
+      "details": {
+        "query": "幻读",
+        "mode": "text",
+        "requested_mode": "text",
+        "hits": [
+          {
+            "record": {
+              "artifact_id": "art_e3866f5922764a57b60cffbd248b8aa3",
+              "revision": 1,
+              "family": "atomic-memory",
+              "kind": "task",
+              "text": "复习数据库事务笔记，核对幻读和不可重复读的示例。",
+              "description": "演示待办 02 · key=demo-task-review",
+              "state": "active",
+              "state_version": 0,
+              "source_ids": [
+                "src_8db842b21e9c485abc953a23d9ac7cda"
+              ],
+              "content_schema": "powercontext.atomic-memory.v1",
+              "citation": {
+                "artifact_id": "art_e3866f5922764a57b60cffbd248b8aa3",
+                "revision": 1,
+                "family": "atomic-memory",
+                "kind": "task",
+                "description": "演示待办 02 · key=demo-task-review",
+                "quote": "复习数据库事务笔记，核对幻读和不可重复读的示例。",
+                "state": "active",
+                "state_version": 0
+              }
+            },
+            "matched_by": [
+              "text"
+            ],
+            "score": 0.01639344262295082,
+            "channel_scores": {
+              "text": -2.7228773294601316e-06
+            }
+          },
+          {
+            "record": {
+              "artifact_id": "art_2004288673d3406799adb5233eb63259",
+              "revision": 1,
+              "family": "atomic-memory",
+              "kind": "progress",
+              "text": "已完成脏读和不可重复读的概念整理；尚未完成幻读案例；下次从事务隔离级别的对照表继续。",
+              "description": "演示进度 01 · key=demo-progress",
+              "state": "active",
+              "state_version": 0,
+              "source_ids": [
+                "src_2b085442e7644dda995138a70b93e26b"
+              ],
+              "content_schema": "powercontext.atomic-memory.v1",
+              "citation": {
+                "artifact_id": "art_2004288673d3406799adb5233eb63259",
+                "revision": 1,
+                "family": "atomic-memory",
+                "kind": "progress",
+                "description": "演示进度 01 · key=demo-progress",
+                "quote": "已完成脏读和不可重复读的概念整理；尚未完成幻读案例；下次从事务隔离级别的对照表继续。",
+                "state": "active",
+                "state_version": 0
+              }
+            },
+            "matched_by": [
+              "text"
+            ],
+            "score": 0.016129032258064516,
+            "channel_scores": {
+              "text": -2.5161914735983733e-06
+            }
+          },
+          {
+            "record": {
+              "artifact_id": "art_f29a000c26d948bdba807bcad83dbb9a",
+              "revision": 1,
+              "family": "atomic-memory",
+              "kind": "weakness",
+              "text": "我还不能用例子解释幻读与不可重复读的区别，需要完成两组 SQL 事务执行顺序练习。",
+              "description": "演示自评 01 · key=demo-weak-phantom",
+              "state": "active",
+              "state_version": 0,
+              "source_ids": [
+                "src_ce85618d97a54381802e830c09e536d6"
+              ],
+              "content_schema": "powercontext.atomic-memory.v1",
+              "citation": {
+                "artifact_id": "art_f29a000c26d948bdba807bcad83dbb9a",
+                "revision": 1,
+                "family": "atomic-memory",
+                "kind": "weakness",
+                "description": "演示自评 01 · key=demo-weak-phantom",
+                "quote": "我还不能用例子解释幻读与不可重复读的区别，需要完成两组 SQL 事务执行顺序练习。",
+                "state": "active",
+                "state_version": 0
+              }
+            },
+            "matched_by": [
+              "text"
+            ],
+            "score": 0.015873015873015872,
+            "channel_scores": {
+              "text": -2.380501507988719e-06
+            }
+          },
+          {
+            "record": {
+              "artifact_id": "art_bc68d9c329f849809cb906ca0989f1d0",
+              "revision": 1,
+              "family": "atomic-memory",
+              "kind": "note",
+              "text": "数据库事务隔离复习笔记：脏读是读到另一个事务尚未提交的数据；不可重复读是在同一事务中多次读取同一行得到不同结果；幻读涉及符合条件的行集合变化。",
+              "description": "演示课程笔记 01 · key=demo-note-isolation",
+              "state": "active",
+              "state_version": 0,
+              "source_ids": [
+                "src_de162b5712854ecfab184c6c70f29bed"
+              ],
+              "content_schema": "powercontext.atomic-memory.v1",
+              "citation": {
+                "artifact_id": "art_bc68d9c329f849809cb906ca0989f1d0",
+                "revision": 1,
+                "family": "atomic-memory",
+                "kind": "note",
+                "description": "演示课程笔记 01 · key=demo-note-isolation",
+                "quote": "数据库事务隔离复习笔记：脏读是读到另一个事务尚未提交的数据；不可重复读是在同一事务中多次读取同一行得到不同结果；幻读涉及符合条件的行集合变化。",
+                "state": "active",
+                "state_version": 0
+              }
+            },
+            "matched_by": [
+              "text"
+            ],
+            "score": 0.015625,
+            "channel_scores": {
+              "text": -2.268766262266495e-06
+            }
+          },
+          {
+            "record": {
+              "artifact_id": "art_4fb742d6324f49398aa5015ef43a880b",
+              "revision": 1,
+              "family": "atomic-memory",
+              "kind": "task",
+              "text": "整理事务隔离级别对照表，并为幻读写一个两事务并发的示例。",
+              "description": "演示待办 01 · key=demo-task-table",
+              "state": "active",
+              "state_version": 0,
+              "source_ids": [
+                "src_4b11e3f0f495430a8b1ffe408d80a246"
+              ],
+              "content_schema": "powercontext.atomic-memory.v1",
+              "citation": {
+                "artifact_id": "art_4fb742d6324f49398aa5015ef43a880b",
+                "revision": 1,
+                "family": "atomic-memory",
+                "kind": "task",
+                "description": "演示待办 01 · key=demo-task-table",
+                "quote": "整理事务隔离级别对照表，并为幻读写一个两事务并发的示例。",
+                "state": "active",
+                "state_version": 0
+              }
+            },
+            "matched_by": [
+              "text"
+            ],
+            "score": 0.015384615384615385,
+            "channel_scores": {
+              "text": -1.138066357474135e-06
+            }
+          }
+        ],
+        "diagnostics": {
+          "embedding_calls": 0,
+          "embedding_fallback": false,
+          "generation_calls": 0,
+          "rerank": "None",
+          "recoverable": false
+        },
+        "workspace": "studyflow-demo",
+        "scope_id": "scp_2wb71p0sk3nk4jjr3yg4am0df2",
+        "empty_message": null
+      }
+    },
+    {
+      "check": "无匹配不编造",
+      "passed": true,
+      "details": {
+        "query": "不存在的火星词语",
+        "mode": "text",
+        "requested_mode": "text",
+        "hits": [],
+        "diagnostics": {
+          "embedding_calls": 0,
+          "embedding_fallback": false,
+          "generation_calls": 0,
+          "rerank": "None",
+          "recoverable": false
+        },
+        "workspace": "studyflow-demo",
+        "scope_id": "scp_2wb71p0sk3nk4jjr3yg4am0df2",
+        "empty_message": "PowerContext 未返回匹配记忆，应用不会编造结果。"
+      }
+    },
+    {
+      "check": "读回偏好并安排两项任务",
+      "passed": true,
+      "details": {
+        "workspace": "studyflow-demo",
+        "scope_id": "scp_2wb71p0sk3nk4jjr3yg4am0df2",
+        "generated_at": "2026-11-16T19:26:34+08:00",
+        "engine": "rule-based-v1",
+        "source_of_truth": "powercontext",
+        "preference": {
+          "available_minutes": 25,
+          "max_tasks": 2,
+          "prefer_weakness": true,
+          "source": {
+            "artifact_id": "art_da579a1f62fc4de9be842749b530bbff",
+            "revision": 1,
+            "family": "atomic-memory",
+            "kind": "preference",
+            "description": "演示学习偏好 · key=demo-pref-25",
+            "quote": "我的单次学习时间为 25 分钟，优先复习薄弱知识点，每次最多安排两个任务。",
+            "state": "active",
+            "state_version": 0
+          },
+          "rules": [
+            "从偏好原文读取“25 分钟”，规则：单次可用时长 = 25 分钟",
+            "偏好原文未写任务上限，按时长分档规则（≤15→1，≤45→2，≤90→3，>90→4）得到 2 项",
+            "偏好原文提到“薄弱”，薄弱点相关的待办排在前面"
+          ],
+          "engine": "rule-based-v1"
+        },
+        "summary": {
+          "open_tasks": 2,
+          "done_tasks": 0,
+          "weaknesses": 1,
+          "notes": 1,
+          "suggested": 2
+        },
+        "completed": [],
+        "recorded_progress": [
+          {
+            "text": "已完成脏读和不可重复读的概念整理；尚未完成幻读案例；下次从事务隔离级别的对照表继续。",
+            "citation": {
+              "artifact_id": "art_2004288673d3406799adb5233eb63259",
+              "revision": 1,
+              "family": "atomic-memory",
+              "kind": "progress",
+              "description": "演示进度 01 · key=demo-progress",
+              "quote": "已完成脏读和不可重复读的概念整理；尚未完成幻读案例；下次从事务隔离级别的对照表继续。",
+              "state": "active",
+              "state_version": 0
+            },
+            "rule": "kind=progress 的原文照抄，不做改写或补全"
+          }
+        ],
+        "blocked": [
+          {
+            "text": "我还不能用例子解释幻读与不可重复读的区别，需要完成两组 SQL 事务执行顺序练习。",
+            "citation": {
+              "artifact_id": "art_f29a000c26d948bdba807bcad83dbb9a",
+              "revision": 1,
+              "family": "atomic-memory",
+              "kind": "weakness",
+              "description": "演示自评 01 · key=demo-weak-phantom",
+              "quote": "我还不能用例子解释幻读与不可重复读的区别，需要完成两组 SQL 事务执行顺序练习。",
+              "state": "active",
+              "state_version": 0
+            },
+            "rule": "kind=weakness 且状态为 active 的记忆全部列为待解决薄弱点"
+          }
+        ],
+        "next_steps": [
+          {
+            "text": "复习数据库事务笔记，核对幻读和不可重复读的示例。",
+            "task_artifact_id": "art_e3866f5922764a57b60cffbd248b8aa3",
+            "reason": "与薄弱点共享 7 个中文二元组，且仍为待办",
+            "citation": {
+              "artifact_id": "art_e3866f5922764a57b60cffbd248b8aa3",
+              "revision": 1,
+              "family": "atomic-memory",
+              "kind": "task",
+              "description": "演示待办 02 · key=demo-task-review",
+              "quote": "复习数据库事务笔记，核对幻读和不可重复读的示例。",
+              "state": "active",
+              "state_version": 0
+            },
+            "status_event": null
+          },
+          {
+            "text": "整理事务隔离级别对照表，并为幻读写一个两事务并发的示例。",
+            "task_artifact_id": "art_4fb742d6324f49398aa5015ef43a880b",
+            "reason": "与薄弱点共享 2 个中文二元组，且仍为待办",
+            "citation": {
+              "artifact_id": "art_4fb742d6324f49398aa5015ef43a880b",
+              "revision": 1,
+              "family": "atomic-memory",
+              "kind": "task",
+              "description": "演示待办 01 · key=demo-task-table",
+              "quote": "整理事务隔离级别对照表，并为幻读写一个两事务并发的示例。",
+              "state": "active",
+              "state_version": 0
+            },
+            "status_event": null
+          }
+        ],
+        "references": [
+          {
+            "artifact_id": "art_da579a1f62fc4de9be842749b530bbff",
+            "revision": 1,
+            "family": "atomic-memory",
+            "kind": "preference",
+            "description": "演示学习偏好 · key=demo-pref-25",
+            "quote": "我的单次学习时间为 25 分钟，优先复习薄弱知识点，每次最多安排两个任务。",
+            "state": "active",
+            "state_version": 0
+          },
+          {
+            "artifact_id": "art_e3866f5922764a57b60cffbd248b8aa3",
+            "revision": 1,
+            "family": "atomic-memory",
+            "kind": "task",
+            "description": "演示待办 02 · key=demo-task-review",
+            "quote": "复习数据库事务笔记，核对幻读和不可重复读的示例。",
+            "state": "active",
+            "state_version": 0
+          },
+          {
+            "artifact_id": "art_4fb742d6324f49398aa5015ef43a880b",
+            "revision": 1,
+            "family": "atomic-memory",
+            "kind": "task",
+            "description": "演示待办 01 · key=demo-task-table",
+            "quote": "整理事务隔离级别对照表，并为幻读写一个两事务并发的示例。",
+            "state": "active",
+            "state_version": 0
+          },
+          {
+            "artifact_id": "art_f29a000c26d948bdba807bcad83dbb9a",
+            "revision": 1,
+            "family": "atomic-memory",
+            "kind": "weakness",
+            "description": "演示自评 01 · key=demo-weak-phantom",
+            "quote": "我还不能用例子解释幻读与不可重复读的区别，需要完成两组 SQL 事务执行顺序练习。",
+            "state": "active",
+            "state_version": 0
+          },
+          {
+            "artifact_id": "art_2004288673d3406799adb5233eb63259",
+            "revision": 1,
+            "family": "atomic-memory",
+            "kind": "progress",
+            "description": "演示进度 01 · key=demo-progress",
+            "quote": "已完成脏读和不可重复读的概念整理；尚未完成幻读案例；下次从事务隔离级别的对照表继续。",
+            "state": "active",
+            "state_version": 0
+          }
+        ],
+        "empty": false,
+        "explanation": [
+          "下一步最多 2 项来自偏好与分档规则，不是模型推断。",
+          "每项建议都指向一条真实 PowerContext atomic-memory artifact（含 artifact_id 与 revision）。",
+          "没有记录的内容（用时、论文数量、提效比例）不会出现在这里。"
+        ]
+      }
+    },
+    {
+      "check": "并发旧版本状态写入被拒绝",
+      "passed": true,
+      "details": [
+        {
+          "status": 409,
+          "body": {
+            "detail": {
+              "code": "version_conflict",
+              "message": "待办状态已被更新（服务端最新事件 seq=1，请求携带 expected_seq=0）。为避免覆盖并发修改，本次写入已取消，请刷新后重试。",
+              "current_seq": 1,
+              "expected_seq": 0,
+              "task_revision": 1
+            }
+          }
+        },
+        {
+          "status": 200,
+          "body": {
+            "task_artifact_id": "art_4fb742d6324f49398aa5015ef43a880b",
+            "status": "done",
+            "seq": 1,
+            "event": {
+              "artifact_id": "art_085f4aadd3cf461e8d303ff9e4400aa3",
+              "revision": 1,
+              "family": "atomic-memory",
+              "kind": "task_status",
+              "text": "{\"schema\":\"studyflow.task-status.v1\",\"task_artifact_id\":\"art_4fb742d6324f49398aa5015ef43a880b\",\"status\":\"done\",\"seq\":1,\"recorded_at\":\"2026-11-16T19:26:34+08:00\",\"summary\":\"待办「整理事务隔离级别对照表，并为幻读写一个两事务并发的示例。」已完成\",\"note\":\"应用层追加事件，不修改任务正文 revision\"}",
+              "description": "待办「整理事务隔离级别对照表，并为幻读写一个两事务并发的示例。」已完成",
+              "state": "active",
+              "state_version": 0,
+              "source_ids": [
+                "src_48b3f0f6dabb4fdd8c613e4ff63d1303"
+              ],
+              "content_schema": "powercontext.atomic-memory.v1",
+              "citation": {
+                "artifact_id": "art_085f4aadd3cf461e8d303ff9e4400aa3",
+                "revision": 1,
+                "family": "atomic-memory",
+                "kind": "task_status",
+                "description": "待办「整理事务隔离级别对照表，并为幻读写一个两事务并发的示例。」已完成",
+                "quote": "{\"schema\":\"studyflow.task-status.v1\",\"task_artifact_id\":\"art_4fb742d6324f49398aa5015ef43a880b\",\"status\":\"done\",\"seq\":1,\"…",
+                "state": "active",
+                "state_version": 0
+              }
+            },
+            "task_memory": {
+              "artifact_id": "art_4fb742d6324f49398aa5015ef43a880b",
+              "revision": 1,
+              "family": "atomic-memory",
+              "kind": "task",
+              "text": "整理事务隔离级别对照表，并为幻读写一个两事务并发的示例。",
+              "description": "演示待办 01 · key=demo-task-table",
+              "state": "active",
+              "state_version": 0,
+              "source_ids": [
+                "src_4b11e3f0f495430a8b1ffe408d80a246"
+              ],
+              "content_schema": "powercontext.atomic-memory.v1",
+              "citation": {
+                "artifact_id": "art_4fb742d6324f49398aa5015ef43a880b",
+                "revision": 1,
+                "family": "atomic-memory",
+                "kind": "task",
+                "description": "演示待办 01 · key=demo-task-table",
+                "quote": "整理事务隔离级别对照表，并为幻读写一个两事务并发的示例。",
+                "state": "active",
+                "state_version": 0
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "check": "导出 Markdown 带真实引用",
+      "passed": true,
+      "details": null
+    },
+    {
+      "check": "真实进程重启后记忆、偏好和已完成任务保留",
+      "passed": true,
+      "details": {
+        "workspace": "studyflow-demo",
+        "scope_id": "scp_2wb71p0sk3nk4jjr3yg4am0df2",
+        "generated_at": "2026-11-16T19:26:38+08:00",
+        "engine": "rule-based-v1",
+        "source_of_truth": "powercontext",
+        "preference": {
+          "available_minutes": 25,
+          "max_tasks": 2,
+          "prefer_weakness": true,
+          "source": {
+            "artifact_id": "art_da579a1f62fc4de9be842749b530bbff",
+            "revision": 1,
+            "family": "atomic-memory",
+            "kind": "preference",
+            "description": "演示学习偏好 · key=demo-pref-25",
+            "quote": "我的单次学习时间为 25 分钟，优先复习薄弱知识点，每次最多安排两个任务。",
+            "state": "active",
+            "state_version": 0
+          },
+          "rules": [
+            "从偏好原文读取“25 分钟”，规则：单次可用时长 = 25 分钟",
+            "偏好原文未写任务上限，按时长分档规则（≤15→1，≤45→2，≤90→3，>90→4）得到 2 项",
+            "偏好原文提到“薄弱”，薄弱点相关的待办排在前面"
+          ],
+          "engine": "rule-based-v1"
+        },
+        "summary": {
+          "open_tasks": 1,
+          "done_tasks": 1,
+          "weaknesses": 1,
+          "notes": 1,
+          "suggested": 1
+        },
+        "completed": [
+          {
+            "text": "整理事务隔离级别对照表，并为幻读写一个两事务并发的示例。",
+            "task_artifact_id": "art_4fb742d6324f49398aa5015ef43a880b",
+            "status": "done",
+            "citation": {
+              "artifact_id": "art_4fb742d6324f49398aa5015ef43a880b",
+              "revision": 1,
+              "family": "atomic-memory",
+              "kind": "task",
+              "description": "演示待办 01 · key=demo-task-table",
+              "quote": "整理事务隔离级别对照表，并为幻读写一个两事务并发的示例。",
+              "state": "active",
+              "state_version": 0
+            },
+            "evidence": {
+              "artifact_id": "art_085f4aadd3cf461e8d303ff9e4400aa3",
+              "revision": 1,
+              "family": "atomic-memory",
+              "kind": "task_status",
+              "description": "待办「整理事务隔离级别对照表，并为幻读写一个两事务并发的示例。」已完成",
+              "quote": "{\"schema\":\"studyflow.task-status.v1\",\"task_artifact_id\":\"art_4fb742d6324f49398aa5015ef43a880b\",\"status\":\"done\",\"seq\":1,\"…",
+              "state": "active",
+              "state_version": 0
+            },
+            "rule": "该待办的最新 task_status 事件为 done"
+          }
+        ],
+        "recorded_progress": [
+          {
+            "text": "已完成脏读和不可重复读的概念整理；尚未完成幻读案例；下次从事务隔离级别的对照表继续。",
+            "citation": {
+              "artifact_id": "art_2004288673d3406799adb5233eb63259",
+              "revision": 1,
+              "family": "atomic-memory",
+              "kind": "progress",
+              "description": "演示进度 01 · key=demo-progress",
+              "quote": "已完成脏读和不可重复读的概念整理；尚未完成幻读案例；下次从事务隔离级别的对照表继续。",
+              "state": "active",
+              "state_version": 0
+            },
+            "rule": "kind=progress 的原文照抄，不做改写或补全"
+          }
+        ],
+        "blocked": [
+          {
+            "text": "我还不能用例子解释幻读与不可重复读的区别，需要完成两组 SQL 事务执行顺序练习。",
+            "citation": {
+              "artifact_id": "art_f29a000c26d948bdba807bcad83dbb9a",
+              "revision": 1,
+              "family": "atomic-memory",
+              "kind": "weakness",
+              "description": "演示自评 01 · key=demo-weak-phantom",
+              "quote": "我还不能用例子解释幻读与不可重复读的区别，需要完成两组 SQL 事务执行顺序练习。",
+              "state": "active",
+              "state_version": 0
+            },
+            "rule": "kind=weakness 且状态为 active 的记忆全部列为待解决薄弱点"
+          }
+        ],
+        "next_steps": [
+          {
+            "text": "复习数据库事务笔记，核对幻读和不可重复读的示例。",
+            "task_artifact_id": "art_e3866f5922764a57b60cffbd248b8aa3",
+            "reason": "与薄弱点共享 7 个中文二元组，且仍为待办",
+            "citation": {
+              "artifact_id": "art_e3866f5922764a57b60cffbd248b8aa3",
+              "revision": 1,
+              "family": "atomic-memory",
+              "kind": "task",
+              "description": "演示待办 02 · key=demo-task-review",
+              "quote": "复习数据库事务笔记，核对幻读和不可重复读的示例。",
+              "state": "active",
+              "state_version": 0
+            },
+            "status_event": null
+          }
+        ],
+        "references": [
+          {
+            "artifact_id": "art_da579a1f62fc4de9be842749b530bbff",
+            "revision": 1,
+            "family": "atomic-memory",
+            "kind": "preference",
+            "description": "演示学习偏好 · key=demo-pref-25",
+            "quote": "我的单次学习时间为 25 分钟，优先复习薄弱知识点，每次最多安排两个任务。",
+            "state": "active",
+            "state_version": 0
+          },
+          {
+            "artifact_id": "art_e3866f5922764a57b60cffbd248b8aa3",
+            "revision": 1,
+            "family": "atomic-memory",
+            "kind": "task",
+            "description": "演示待办 02 · key=demo-task-review",
+            "quote": "复习数据库事务笔记，核对幻读和不可重复读的示例。",
+            "state": "active",
+            "state_version": 0
+          },
+          {
+            "artifact_id": "art_085f4aadd3cf461e8d303ff9e4400aa3",
+            "revision": 1,
+            "family": "atomic-memory",
+            "kind": "task_status",
+            "description": "待办「整理事务隔离级别对照表，并为幻读写一个两事务并发的示例。」已完成",
+            "quote": "{\"schema\":\"studyflow.task-status.v1\",\"task_artifact_id\":\"art_4fb742d6324f49398aa5015ef43a880b\",\"status\":\"done\",\"seq\":1,\"…",
+            "state": "active",
+            "state_version": 0
+          },
+          {
+            "artifact_id": "art_f29a000c26d948bdba807bcad83dbb9a",
+            "revision": 1,
+            "family": "atomic-memory",
+            "kind": "weakness",
+            "description": "演示自评 01 · key=demo-weak-phantom",
+            "quote": "我还不能用例子解释幻读与不可重复读的区别，需要完成两组 SQL 事务执行顺序练习。",
+            "state": "active",
+            "state_version": 0
+          },
+          {
+            "artifact_id": "art_2004288673d3406799adb5233eb63259",
+            "revision": 1,
+            "family": "atomic-memory",
+            "kind": "progress",
+            "description": "演示进度 01 · key=demo-progress",
+            "quote": "已完成脏读和不可重复读的概念整理；尚未完成幻读案例；下次从事务隔离级别的对照表继续。",
+            "state": "active",
+            "state_version": 0
+          }
+        ],
+        "empty": false,
+        "explanation": [
+          "下一步最多 2 项来自偏好与分档规则，不是模型推断。",
+          "每项建议都指向一条真实 PowerContext atomic-memory artifact（含 artifact_id 与 revision）。",
+          "没有记录的内容（用时、论文数量、提效比例）不会出现在这里。"
+        ]
+      }
+    },
+    {
+      "check": "工作区 scope 隔离",
+      "passed": true,
+      "details": {
+        "workspace": "acceptance-empty",
+        "scope_id": "scp_0vs8z9w080mp8sv96ahkg2ef6g"
+      }
+    },
+    {
+      "check": "空白输入明确拒绝",
+      "passed": true,
+      "details": {
+        "detail": [
+          {
+            "type": "value_error",
+            "loc": [
+              "body",
+              "text"
+            ],
+            "msg": "Value error, text 不能为空",
+            "input": "   ",
+            "ctx": {
+              "error": {}
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

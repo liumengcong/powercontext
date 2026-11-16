@@ -1,0 +1,42 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><style>body{font:16px/1.65 -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;background:#f5f6fa;color:#17293f;margin:24px auto;max-width:1080px;padding:0 24px}h1{font-size:25px;margin:0}h2{font-size:19px}pre{font:14px/1.65 ui-monospace,monospace;white-space:pre-wrap;overflow-wrap:anywhere;margin:0}.box{background:white;border:1px solid #d9e0eb;border-radius:12px;padding:18px;margin:16px 0}.meta{font-size:13px;color:#56677b}.note{background:#fff4dc;padding:12px;border-radius:8px}a{color:#0c827a}</style><h1>Qoder CLI · 真实开发记录</h1><p class="meta">日期：2026-11-16　版本：1.1.89　会话：3c434793-9f9a-4c5b-9885-bb9b3da56545</p><p class="note">本页是实际 CLI 日志的可读导出，由浏览器展示；不是 Qoder 桌面端或终端界面的仿制截图。原始工具事件与测试输出见 <a href="qoder-events.json">qoder-events.json</a>。仅筛选与排版，未模拟工具执行。</p><div class="box"><h2>Qoder 真实源码写入事件（节选）</h2><pre>Write qoder/backend/config.py
+      内容 SHA256 e0355306a4b3453b080c731e130e08c247cd141519143a3cad79b13ff96a4e8c
+Write qoder/backend/store.py
+      内容 SHA256 c8689ec078327d3ef07a71ae8a0985b3d8593c4ef99244acb968513d08d9495b
+Write qoder/backend/domain.py
+      内容 SHA256 a9879237280d5947ce524b370436684fe43620c64b9f1ae3576d2073190e125c
+Write qoder/backend/app.py
+      内容 SHA256 cf2e1373ed302414fc1198e4b27eae0a6e30a488a964bef56b5d9a7327789e25
+Write qoder/tests/conftest.py
+      内容 SHA256 2ed777b8b7165e01727572c450c520c40bca124e33d4f885ea78ba2b3c78694a
+Write qoder/tests/test_powercontext_real.py
+      内容 SHA256 6cac4bdd87d83e516db2c202ebace52340c856139dad96de816ec9ffec49dcf5
+Write qoder/pytest.ini
+      内容 SHA256 d07cce59c3636d67ddfa107f362571ad282e2dee0e903414399e06c8ba270729
+Write qoder/tests/test_api.py
+      内容 SHA256 10a7f5d3df69e4c2064405c3615c96dbb6cd69e779a7a154b15644b07f73a5c6
+Write qoder/frontend/index.html
+      内容 SHA256 85b1641c94439f142ff0b71369f5fab5157664943c88b8de50305fbc8d996399
+Write qoder/frontend/styles.css
+      内容 SHA256 0c068e5ab4779f0206b8fedccbd1ebd3d38d2210f6a1853f67b1c82a39819b3a
+Write qoder/frontend/app.js
+      内容 SHA256 c2d8a656b60be3678ae16e448d6cd0285938ca4884800116a576e9795e9a6e56
+Write qoder/scripts/acceptance_drill.py
+      内容 SHA256 21a7cfca0279adb4cd190d70f92afd56f8921e3085f7ec4c33964994d5f55022
+Write qoder/tests/test_concurrency_and_consistency.py
+      内容 SHA256 bf82466eb8ef894eeb9618a6a1925324ceb319ef7df5ac43d29934dca11af8ed
+Write qoder/requirements.txt
+      内容 SHA256 13cb9b39727478ecbb197e5c057a2a41db0cec5735d2abc3f34c9bd687f04eef
+Write qoder/.env.example
+      内容 SHA256 2773d65ed8771a02b6d2153a33fb8b1cd26c11902bc8be7cf8e46276c5244366
+Write qoder/.gitignore
+      内容 SHA256 811165e3ebad4355bfeda82eacf4ee9948a6a14867dab9b54f5e409acae25251</pre></div><div class="box"><h2>Qoder 真实测试工具调用及输出（末段）</h2><pre>cd &quot;[workspace]/outputs/StudyFlow/qoder&quot; &amp;&amp; [workspace]/work/pc-env/bin/python -m pytest tests/ 2&gt;&amp;1 | tail -12
+....................                                                     [100%]
+=============================== warnings summary ===============================
+tests/test_api.py: 15 warnings
+tests/test_concurrency_and_consistency.py: 3 warnings
+tests/test_powercontext_real.py: 6 warnings
+  [workspace]/work/pc-env/lib/python3.12/site-packages/powercontext/builtin/persistence/lexical_projection.py:35: SADeprecationWarning: The Result.tuples() method is deprecated, Row now behaves like a tuple and can unpack types directly. (deprecated since: 2.1.0)
+    versions = dict((await connection.execute(select(LEXICAL_PROJECTION_VERSIONS_TABLE))).tuples().all())
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+20 passed, 24 warnings in 18.88s</pre></div>
