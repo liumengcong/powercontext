@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.env
+runtime/
+public/models/*
+!public/models/.gitkeep
+reports/*.json
+reports/*.csv
+!reports/verification.json

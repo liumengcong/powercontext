@@ -1,0 +1,96 @@
+{
+  "device": {
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6 Safari/605.1.15",
+    "hardwareConcurrency": 8,
+    "deviceMemory": null
+  },
+  "dataset": {
+    "version": "handwritten-cn-v1-2026-11-16",
+    "sha256": "8f07bbaccb48d92f4b093eaf99c640eaaa8256b0d1f48f6cf1323b5dbaa71984",
+    "documents": 32,
+    "queries": 16
+  },
+  "seekdb": {
+    "version": "5.7.25-OceanBase seekdb-v1.4.0.0",
+    "dimension": 512,
+    "distance": "cosine",
+    "fulltext": "ngram(2)",
+    "mode": "embedded"
+  },
+  "rows": [
+    {
+      "name": "fp32_wasm_b1",
+      "complete": 3,
+      "total": 3,
+      "requestedBackend": "wasm",
+      "actualBackends": "wasm",
+      "matchedRuns": 3,
+      "modelBytes": 94851877,
+      "loadMedianMs": 768,
+      "documentsPerSecond": 12.432012432012431,
+      "writeMedianMs": 258.1181669998914,
+      "refreshMedianMs": 410.0832919999957,
+      "seekdbMedianMs": 6.914312500040978,
+      "e2eMedianMs": 67,
+      "recall5": 0.8958333333333335,
+      "ndcg5": 0.8920726957241111
+    },
+    {
+      "name": "q8_wasm_b1",
+      "complete": 3,
+      "total": 3,
+      "requestedBackend": "wasm",
+      "actualBackends": "wasm",
+      "matchedRuns": 3,
+      "modelBytes": 24010842,
+      "loadMedianMs": 549,
+      "documentsPerSecond": 11.477761836441895,
+      "writeMedianMs": 323.9633339999709,
+      "refreshMedianMs": 408.7260829999577,
+      "seekdbMedianMs": 8.395520999911241,
+      "e2eMedianMs": 66.00000000001455,
+      "recall5": 0.8958333333333335,
+      "ndcg5": 0.9102299046805636
+    },
+    {
+      "name": "q8_wasm_b8",
+      "complete": 3,
+      "total": 3,
+      "requestedBackend": "wasm",
+      "actualBackends": "wasm",
+      "matchedRuns": 3,
+      "modelBytes": 24010842,
+      "loadMedianMs": 560,
+      "documentsPerSecond": 10.21059349074665,
+      "writeMedianMs": 53.93649999983609,
+      "refreshMedianMs": 411.5343329999596,
+      "seekdbMedianMs": 7.053979500080459,
+      "e2eMedianMs": 67,
+      "recall5": 0.8958333333333335,
+      "ndcg5": 0.8931450564799399
+    },
+    {
+      "name": "q8_webgpu_b8",
+      "complete": 3,
+      "total": 3,
+      "requestedBackend": "webgpu",
+      "actualBackends": "webgpu",
+      "matchedRuns": 3,
+      "modelBytes": 24010842,
+      "loadMedianMs": 907.0000000000001,
+      "documentsPerSecond": 9.723488301428137,
+      "writeMedianMs": 97.22883299994282,
+      "refreshMedianMs": 310.4257089998573,
+      "seekdbMedianMs": 9.509686999954283,
+      "e2eMedianMs": 117.00000000001455,
+      "recall5": 0.8958333333333335,
+      "ndcg5": 0.8931450564799399
+    }
+  ],
+  "comparison": {
+    "compression": 3.9503769588754944,
+    "recallDelta": 0,
+    "ndcgDelta": 0.018157208956452564
+  },
+  "warning": "只将实际后端与请求后端相符且完成的轮次计入该配置；WebGPU 降级样本在原始报告中保留。"
+}

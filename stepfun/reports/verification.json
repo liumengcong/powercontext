@@ -1,0 +1,209 @@
+{
+  "generatedAt": "2026-11-16T07:00:04.054054+00:00",
+  "host": {
+    "platform": "macOS-26.6-arm64-arm-64bit",
+    "architecture": "arm64"
+  },
+  "build": {
+    "typescript": "passed",
+    "productionBundle": "passed"
+  },
+  "unitTests": {
+    "passed": 5,
+    "failed": 0
+  },
+  "seekdbInfrastructure": {
+    "createdAt": "2026-11-16T06:41:25.721Z",
+    "kind": "real-seekdb-infrastructure-synthetic-vectors",
+    "cases": [
+      {
+        "name": "写入并刷新后数据库混合检索包含新增文档",
+        "passed": true,
+        "ms": 5010.841084000014
+      },
+      {
+        "name": "重复导入采用 upsert 不增加记录数",
+        "passed": true,
+        "ms": 232.24400000000605
+      },
+      {
+        "name": "切换知识库保持结果隔离",
+        "passed": true,
+        "ms": 133.21875
+      },
+      {
+        "name": "配置指纹隔离",
+        "passed": true,
+        "ms": 62.95924999998533
+      },
+      {
+        "name": "并发混合查询不串会话",
+        "passed": true,
+        "ms": 20.484375
+      },
+      {
+        "name": "关闭后重开可检索已有内容",
+        "passed": true,
+        "ms": 18.436291999998502
+      }
+    ],
+    "version": "5.7.25-OceanBase seekdb-v1.4.0.0",
+    "completed": true
+  },
+  "http": {
+    "kind": "real-local-http-and-seekdb-synthetic-vectors",
+    "cases": [
+      {
+        "name": "status",
+        "status": 200,
+        "passed": true,
+        "response": {
+          "count": 0,
+          "collection": "edge_http_smoke_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "version": "5.7.25-OceanBase seekdb-v1.4.0.0"
+        }
+      },
+      {
+        "name": "import",
+        "status": 200,
+        "passed": true,
+        "response": {
+          "writeMs": 14.59433299995726,
+          "refreshMs": 332.6582079999498,
+          "count": 1
+        }
+      },
+      {
+        "name": "search",
+        "status": 200,
+        "passed": true,
+        "response": {
+          "hits": [
+            {
+              "id": "http1",
+              "text": "本地 HTTP 链路测试",
+              "metadata": {
+                "id": "http1",
+                "chunk": 0,
+                "source": "HTTP检查",
+                "profile": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                "sourceId": "http-source"
+              },
+              "score": 0.0328
+            }
+          ],
+          "seekdbMs": 34.24258300004294
+        }
+      },
+      {
+        "name": "reject-wrong-vector-dimension",
+        "status": 400,
+        "passed": true
+      },
+      {
+        "name": "reject-cross-origin",
+        "status": 403,
+        "passed": true
+      }
+    ]
+  },
+  "browser": {
+    "executed": true,
+    "operator": "用户在本机浏览器运行，助手核对原始报告与汇总",
+    "report": "reports/stepfun-benchmark.json",
+    "reportSha256": "eb4c6b899ac3f2ce3e10aaa2cc1548d1c5540211b353ef6d5eab1a389fd865e4",
+    "browser": "Safari 26.6",
+    "environment": "reports/environment.json",
+    "completedRuns": 12,
+    "totalRuns": 12,
+    "querySamples": 192,
+    "failedRuns": 0,
+    "fallbackRuns": 0,
+    "backendMatchingRuns": 12,
+    "webgpu": {
+      "completedRuns": 3,
+      "actualBackend": "webgpu"
+    },
+    "wasm": {
+      "completedRuns": 9,
+      "actualBackend": "wasm"
+    },
+    "qualityMetrics": [
+      {
+        "name": "fp32_wasm_b1",
+        "complete": 3,
+        "total": 3,
+        "requestedBackend": "wasm",
+        "actualBackends": "wasm",
+        "matchedRuns": 3,
+        "modelBytes": 94851877,
+        "loadMedianMs": 768,
+        "documentsPerSecond": 12.432012432012431,
+        "writeMedianMs": 258.1181669998914,
+        "refreshMedianMs": 410.0832919999957,
+        "seekdbMedianMs": 6.914312500040978,
+        "e2eMedianMs": 67,
+        "recall5": 0.8958333333333335,
+        "ndcg5": 0.8920726957241111
+      },
+      {
+        "name": "q8_wasm_b1",
+        "complete": 3,
+        "total": 3,
+        "requestedBackend": "wasm",
+        "actualBackends": "wasm",
+        "matchedRuns": 3,
+        "modelBytes": 24010842,
+        "loadMedianMs": 549,
+        "documentsPerSecond": 11.477761836441895,
+        "writeMedianMs": 323.9633339999709,
+        "refreshMedianMs": 408.7260829999577,
+        "seekdbMedianMs": 8.395520999911241,
+        "e2eMedianMs": 66.00000000001455,
+        "recall5": 0.8958333333333335,
+        "ndcg5": 0.9102299046805636
+      },
+      {
+        "name": "q8_wasm_b8",
+        "complete": 3,
+        "total": 3,
+        "requestedBackend": "wasm",
+        "actualBackends": "wasm",
+        "matchedRuns": 3,
+        "modelBytes": 24010842,
+        "loadMedianMs": 560,
+        "documentsPerSecond": 10.21059349074665,
+        "writeMedianMs": 53.93649999983609,
+        "refreshMedianMs": 411.5343329999596,
+        "seekdbMedianMs": 7.053979500080459,
+        "e2eMedianMs": 67,
+        "recall5": 0.8958333333333335,
+        "ndcg5": 0.8931450564799399
+      },
+      {
+        "name": "q8_webgpu_b8",
+        "complete": 3,
+        "total": 3,
+        "requestedBackend": "webgpu",
+        "actualBackends": "webgpu",
+        "matchedRuns": 3,
+        "modelBytes": 24010842,
+        "loadMedianMs": 907.0000000000001,
+        "documentsPerSecond": 9.723488301428137,
+        "writeMedianMs": 97.22883299994282,
+        "refreshMedianMs": 310.4257089998573,
+        "seekdbMedianMs": 9.509686999954283,
+        "e2eMedianMs": 117.00000000001455,
+        "recall5": 0.8958333333333335,
+        "ndcg5": 0.8931450564799399
+      }
+    ],
+    "pending": [
+      "Chrome/Edge 浏览器验收",
+      "无 WebGPU 环境的自动 WASM 降级验收",
+      "自己的文档及增量导入、知识库切换和重启的交互界面验收"
+    ]
+  },
+  "claimScope": "真实 Safari 浏览器文档与查询推理、seekdb 混合检索和质量评测已记录；小型人工语料仅用于工程验收。数据库基础设施测试使用合成向量，单列。未宣称批处理/GPU 提速、通用质量无损或自动降级验收通过。",
+  "updatedAt": "2026-11-16T07:46:24.299352+00:00"
+}
