@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict
 from pypdf import PdfReader
 
 from powercontext.artifacts import MemoryCitation
+from powercontext.builtin.artifacts.search import analyze_fts_query
 from powercontext.builtin.runtime.models import SearchMemoryRequest
 from powercontext.sources import (
     TEXT_EVIDENCE_PROJECTION_KEY,
@@ -138,19 +139,36 @@ PDF_PAGE_SOURCE_DEFINITION: SourceDefinition[PDFPageInput, PDFPageSource, PDFPag
 async def search_pdf_pages(memory, question: str, limit: int = 10) -> tuple[MemoryCitation, ...]:
     if not question.strip() or type(limit) is not int or limit < 1:
         raise ValueError("question and positive limit are required")
-    page = await memory.search(SearchMemoryRequest(query=question, limit=limit, mode="fts"))
-    citations: list[MemoryCitation] = []
-    seen: set[tuple[str, int, str]] = set()
-    for hit in page.hits:
-        citation = MemoryCitation(
-            memory_ref=hit.memory_ref,
-            entry_id=hit.entry_id,
-            entry_version_id=hit.entry_version_id,
+    terms = analyze_fts_query(question).split()
+    queries = [question]
+    if len(terms) > 8:
+        chunk_size = 6
+        step = 5
+        for start in range(0, len(terms), step):
+            chunk = terms[start : start + chunk_size]
+            if len(chunk) >= 3:
+                queries.append(" ".join(chunk))
+            if len(queries) >= 5 or start + chunk_size >= len(terms):
+                break
+
+    fused: dict[tuple[str, int, str], tuple[float, int, MemoryCitation]] = {}
+    search_limit = max(limit, min(40, limit * 2))
+    for query_index, candidate_query in enumerate(queries):
+        page = await memory.search(
+            SearchMemoryRequest(query=candidate_query, limit=search_limit, mode="fts")
         )
-        identity = (str(hit.memory_ref.artifact_id), hit.memory_ref.revision, hit.entry_id)
-        if identity not in seen:
-            citations.append(citation)
-            seen.add(identity)
-        if len(citations) >= limit:
-            break
-    return tuple(citations)
+        for rank, hit in enumerate(page.hits, 1):
+            citation = MemoryCitation(
+                memory_ref=hit.memory_ref,
+                entry_id=hit.entry_id,
+                entry_version_id=hit.entry_version_id,
+            )
+            identity = (str(hit.memory_ref.artifact_id), hit.memory_ref.revision, hit.entry_id)
+            score, original_rank, _ = fused.get(identity, (0.0, 10**9, citation))
+            # The complete natural-language query is first and therefore retains tie priority.
+            if query_index == 0:
+                original_rank = rank
+            fused[identity] = (score + 1 / (60 + rank), original_rank, citation)
+
+    ranked = sorted(fused.values(), key=lambda item: (-item[0], item[1]))
+    return tuple(item[2] for item in ranked[:limit])

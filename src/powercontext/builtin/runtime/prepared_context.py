@@ -17,7 +17,9 @@
 from __future__ import annotations
 
 import json
+import math
 import re
+from collections import Counter
 from collections.abc import Sequence
 from dataclasses import dataclass, replace
 from itertools import chain
@@ -427,10 +429,8 @@ class PreparedContextBuilder:
                     fragment_start = start + trim_start
                     fragment_end = fragment_start + len(text)
                     tokens = _evidence_tokens(text)
-                    overlap = sum(1 for token in tokens if token in query_tokens)
-                    if not overlap:
+                    if not any(token in query_tokens for token in tokens):
                         continue
-                    score = overlap / max(1, len(set(tokens)))
                     entry = _PreparedContextEntry(
                         origin=address,
                         kind="memory",
@@ -446,7 +446,35 @@ class PreparedContextBuilder:
                         end=fragment_end,
                         text=text,
                     )
-                    ranked.append((score, group_index, hit_index, entry, fragment))
+                    ranked.append((0.0, group_index, hit_index, entry, fragment))
+        sentence_tokens = [set(_evidence_tokens(item[3].content)) for item in ranked]
+        document_frequency = Counter(token for tokens in sentence_tokens for token in tokens)
+        sentence_count = len(sentence_tokens)
+        weights = {
+            token: math.log((sentence_count + 1) / (document_frequency.get(token, 0) + 1)) + 1
+            for token in query_tokens
+        }
+        query_norm = math.sqrt(sum(weight * weight for weight in weights.values()))
+        ranked = [
+            (
+                sum(weights[token] ** 2 for token in tokens & query_tokens)
+                / max(
+                    1e-12,
+                    query_norm
+                    * math.sqrt(
+                        sum(
+                            (math.log((sentence_count + 1) / (document_frequency[token] + 1)) + 1) ** 2
+                            for token in tokens
+                        )
+                    ),
+                ),
+                group_index,
+                hit_index,
+                entry,
+                fragment,
+            )
+            for (_, group_index, hit_index, entry, fragment), tokens in zip(ranked, sentence_tokens, strict=True)
+        ]
         ranked.sort(key=lambda item: (-item[0], item[1], item[2], item[4].start))
         selected: list[_PreparedContextEntry] = []
         fragments: list[PreparedContextFragment] = []
