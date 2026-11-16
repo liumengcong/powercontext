@@ -143,13 +143,14 @@ async def search_pdf_pages(memory, question: str, limit: int = 10) -> tuple[Memo
     queries = [question]
     if len(terms) > 8:
         chunk_size = 6
-        step = 5
-        for start in range(0, len(terms), step):
-            chunk = terms[start : start + chunk_size]
-            if len(chunk) >= 3:
-                queries.append(" ".join(chunk))
-            if len(queries) >= 5 or start + chunk_size >= len(terms):
-                break
+        last_start = len(terms) - chunk_size
+        starts = sorted(
+            {
+                round(last_start * index / 3)
+                for index in range(4)
+            }
+        )
+        queries.extend(" ".join(terms[start : start + chunk_size]) for start in starts)
 
     fused: dict[tuple[str, int, str], tuple[float, int, MemoryCitation]] = {}
     search_limit = max(limit, min(40, limit * 2))
