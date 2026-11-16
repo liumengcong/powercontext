@@ -1,0 +1,26 @@
+<!--
+Copyright (c) 2026 OceanBase.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+
+{% from 'components/page-heading.html' import page_heading %}
+{{ page_heading(t.prompts,t.prompts_subtitle) }}
+{% if errors.get('prompts') %}{{ read_error(errors.prompts,t.prompts) }}{% endif %}
+{% if not data.prompts and not errors.get('prompts') %}<div class="quiet-empty"><h2>{{ t.prompt_empty }}</h2><p>{{ t.prompt_empty_body }}</p></div>{% endif %}
+<div class="record-list">{% for prompt in data.prompts %}{% set opened = prompt_opened if prompt_opened and prompt.prompt_key == prompt_key else none %}{% set mode = opened.content.mode if opened else prompt.mode %}
+<article><details class="supporting-details prompt-record" {% if prompt.prompt_key == prompt_key %}open{% endif %}><summary><span class="record-row-title">{{ t.get(prompt.prompt_key,prompt.prompt_key) }}</span><span class="badge bg-secondary-lt ms-2">{{ t.get('prompt_state_' ~ prompt.status,prompt.status) }}</span><span class="text-secondary small ms-2">{{ t.prompt_mode }}: {{ t.prompt_custom if mode == 'custom' else t.prompt_auto }}</span></summary>
+<div class="document-meta mb-3"><code>{{ prompt.prompt_key }}</code> · {{ t.prompt_revision }} {{ opened.revision if opened else (prompt.artifact.revision if prompt.artifact else t.prompt_auto) }} · {{ t.prompt_demonstrations }} {{ opened.content.demonstrations|length if opened else (prompt.effective.demonstrations|length if prompt.effective else 0) }}</div>
+{% if prompt.prompt_key == prompt_key and errors.get('prompt_selected') %}{{ read_error(errors.prompt_selected,t.prompt_revision) }}{% else %}<h2 class="section-title">{{ t.prompt_instructions if opened or prompt.effective else t.prompt_builtin_template }}</h2><pre class="page-body-pre text-break">{{ opened.content.instructions if opened else (prompt.effective.instructions if prompt.effective else (prompt.builtin.instructions if prompt.builtin else '')) }}</pre>{% endif %}
+{% if prompt.artifact %}<a href="{{ link('prompts',prompt_key=prompt.prompt_key,prompt_revision=prompt.artifact.revision) }}">{{ t.revision_history }} →</a>{% endif %}
+</details></article>{% endfor %}</div>{% include 'components/revision-history.html' %}

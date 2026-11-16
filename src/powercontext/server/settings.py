@@ -1,0 +1,445 @@
+# Copyright (c) 2026 OceanBase.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""Environment-backed settings for the PowerContext Server."""
+
+from __future__ import annotations
+
+from collections.abc import Mapping
+from contextlib import suppress
+from ipaddress import ip_address
+from pathlib import Path
+from typing import Annotated, Literal
+from urllib.parse import urlsplit
+
+from pydantic import BaseModel, Field, SecretStr, field_validator, model_validator
+from pydantic_settings import BaseSettings, InitSettingsSource, PydanticBaseSettingsSource, SettingsConfigDict
+from typing_extensions import override
+
+from powercontext.builtin.artifacts.skill import AgentSkillTarget
+from powercontext.builtin.code.models import CodeConfig
+from powercontext.builtin.persistence.oceanbase import OceanBaseConfig
+from powercontext.builtin.persistence.seekdb import SeekDBConfig
+from powercontext.builtin.persistence.sqlite import SQLiteConfig
+from powercontext.builtin.runtime.config import (
+    DatabaseConfig,
+    ExternalSkillsConfig,
+    HandoffReportConfig,
+    InferenceConfig,
+    RuntimeConfig,
+)
+from powercontext.paths import default_database_path, default_seekdb_path, powercontext_data_dir, sqlite_url
+from powercontext.transport import is_loopback_host
+
+_UNSAFE_BIND_MESSAGE = (
+    "A non-loopback bind requires authentication; "
+    "set allow_unauthenticated_non_loopback to opt in when TLS is "
+    "terminated upstream or the network is otherwise controlled"
+)
+
+
+class UnauthenticatedNonLoopbackBindError(ValueError):
+    """Raised when a bind would expose an unauthenticated Server off loopback.
+
+    A dedicated type lets callers that assemble the settings (e.g. the CLI) recognise this
+    policy failure by identity -- via pydantic's ``ctx['error']`` -- and translate it into an
+    actionable message, without matching against the raw validation text.
+    """
+
+
+class MissingBearerTokenError(ValueError):
+    """Raised when authentication is enabled but no bearer token is configured.
+
+    Recognised by identity the same way as :class:`UnauthenticatedNonLoopbackBindError`, so the
+    CLI can point the operator at the concrete token / disable levers instead of surfacing
+    pydantic's raw validation report.
+    """
+
+
+class MissingAuthenticationProviderError(ValueError):
+    """Raised when enforced Access has neither an injected identity Provider nor a legacy token."""
+
+    def __init__(self) -> None:
+        super().__init__("enforced Access Mode requires an injected Authentication Provider or legacy AUTH_TOKEN")
+
+
+def _default_database() -> SQLiteConfig:
+    return SQLiteConfig(url=sqlite_url(default_database_path()))
+
+
+def _default_local_external_skills(workspace: Path) -> ExternalSkillsConfig:
+    return ExternalSkillsConfig(
+        host_id="local-workspace",
+        targets=(
+            AgentSkillTarget(
+                target_id="codex-project",
+                agent_kind="codex",
+                installation_scope="project",
+                path=workspace / ".agents" / "skills",
+                allow_managed_publish=True,
+            ),
+            AgentSkillTarget(
+                target_id="claude-project",
+                agent_kind="claude_code",
+                installation_scope="project",
+                path=workspace / ".claude" / "skills",
+                allow_managed_publish=True,
+            ),
+        ),
+    )
+
+
+def is_unauthenticated_non_loopback_bind(
+    *,
+    host: str,
+    auth_enabled: bool,
+    allow_unauthenticated_non_loopback: bool,
+) -> bool:
+    """Return whether a bind exposes an unauthenticated Server off loopback."""
+
+    return not is_loopback_host(host) and not auth_enabled and not allow_unauthenticated_non_loopback
+
+
+class HttpConfig(BaseModel):
+    """HTTP listener and process-local admission configuration."""
+
+    host: str = "127.0.0.1"
+    port: int = Field(default=8000, ge=1, le=65535)
+    uds: Path | None = None
+    uds_external_scheme: Literal["http", "https"] | None = None
+    max_request_body_bytes: int = Field(default=16 * 1024 * 1024, gt=0)
+    max_concurrent_requests: int = Field(default=64, gt=0)
+
+    @field_validator("uds", mode="before")
+    @classmethod
+    def validate_uds(cls, value: object) -> object:
+        if value is None:
+            return None
+        from powercontext.server.uds import validate_socket_path
+
+        return validate_socket_path(value)
+
+    @model_validator(mode="after")
+    def require_uds_for_external_scheme(self) -> HttpConfig:
+        if self.uds_external_scheme is not None and self.uds is None:
+            raise ValueError("HTTP_UDS_EXTERNAL_SCHEME requires HTTP_UDS")  # noqa: TRY003
+        return self
+
+
+class McpConfig(BaseModel):
+    """Optional MCP projection configuration."""
+
+    enabled: bool = True
+    path: str = "/mcp"
+
+    @field_validator("path")
+    @classmethod
+    def validate_path(cls, value: str) -> str:
+        normalized = value.rstrip("/")
+        if not normalized.startswith("/") or normalized == "":
+            raise ValueError("MCP path must be an absolute non-root path")  # noqa: TRY003
+        return normalized
+
+
+class BearerAuthConfig(BaseModel):
+    """Compatibility settings for the pre-Access static bearer authentication."""
+
+    enabled: bool = False
+    token: SecretStr | None = Field(default=None, repr=False)
+    identities_file: Path | None = None
+    administrators: tuple[str, ...] = ()
+
+    @model_validator(mode="after")
+    def require_token_when_enabled(self) -> BearerAuthConfig:
+        if self.enabled and self.identities_file is None and (self.token is None or not self.token.get_secret_value()):
+            raise MissingBearerTokenError("Bearer token is required when authentication is enabled")  # noqa: TRY003
+        return self
+
+
+class SourceManagementConfig(BaseModel):
+    """One trusted manager and optional local background deployment."""
+
+    process_mode: Literal["background", "local-service"] = Field(
+        default="background",
+        description="Local collect deployment requires Linux; local-service also requires systemd --user.",
+    )
+    manager_subject: str | None = None
+    manager_id: str = "sources"
+    autostart: bool = False
+    state_dir: Path | None = None
+    request_seconds: float = Field(default=10, gt=0, le=60)
+    lease_seconds: float = Field(default=30, ge=3, le=300)
+    write_wait_timeout_seconds: float = Field(default=300, ge=1, le=300)
+
+
+class DashboardConfig(BaseModel):
+    """Optional personal and demonstration UI sharing the Server access mode."""
+
+    enabled: bool = False
+
+
+class AccessControlConfig(BaseModel):
+    """Server security profile and deployment-local authorization identity."""
+
+    mode: Literal["disabled", "enforced"] = "disabled"
+    deployment_id: str = Field(default="powercontext", min_length=1, max_length=128, pattern=r"^[\x21-\x7E]+$")
+    background_principal_id: str | None = Field(default=None, min_length=1, max_length=255)
+    background_principal_description: str | None = Field(default=None, min_length=1, max_length=255)
+
+
+class ServerLoggingConfig(BaseModel):
+    """Operational log output owned by the Server process."""
+
+    level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
+    format: Literal["console", "json"] = "console"
+    access: bool = True
+    file: bool = False
+    directory: Path = Field(default_factory=lambda: powercontext_data_dir() / "logs")
+    max_bytes: int = Field(default=20 * 1024 * 1024, gt=0)
+    backup_count: int = Field(default=10, ge=1)
+    compression: Literal["none", "gzip"] = "gzip"
+
+    @field_validator("directory")
+    @classmethod
+    def resolve_directory(cls, value: Path) -> Path:
+        return value.expanduser().resolve()
+
+    otlp_enabled: bool = False
+
+    @field_validator("level", mode="before")
+    @classmethod
+    def normalize_level(cls, value: object) -> object:
+        return value.upper() if isinstance(value, str) else value
+
+
+class MetricsConfig(BaseModel):
+    """Prometheus metrics exposed by the Server."""
+
+    enabled: bool = True
+    background_port: int = Field(default=8001, ge=1, le=65535)
+
+
+class TracingConfig(BaseModel):
+    """Optional span recording and OTLP export configured through standard OTel environment variables."""
+
+    enabled: bool = False
+
+
+class ServerSettings(BaseSettings):
+    """Configuration for the Server process and its built-in runtime."""
+
+    model_config = SettingsConfigDict(
+        env_prefix="POWERCONTEXT_SERVER_",
+        env_nested_delimiter="_",
+        env_nested_max_split=1,
+        extra="ignore",
+        hide_input_in_errors=True,
+        nested_model_default_partial_update=True,
+        populate_by_name=True,
+    )
+
+    http: HttpConfig = Field(default_factory=HttpConfig)
+    workspace: Path = Field(default_factory=Path.cwd)
+    public_url: str | None = None
+    allow_insecure_http: bool = False
+    mcp: McpConfig = Field(default_factory=McpConfig)
+    auth: BearerAuthConfig = Field(default_factory=BearerAuthConfig)
+    source_management: SourceManagementConfig = Field(default_factory=SourceManagementConfig)
+    dashboard: DashboardConfig = Field(default_factory=DashboardConfig)
+    access: AccessControlConfig = Field(default_factory=AccessControlConfig)
+    allow_unauthenticated_non_loopback: bool = False
+    logging: ServerLoggingConfig = Field(default_factory=ServerLoggingConfig)
+    metrics: MetricsConfig = Field(default_factory=MetricsConfig)
+    tracing: TracingConfig = Field(default_factory=TracingConfig)
+    cursor_signing_secret: SecretStr | None = Field(default=None, repr=False)
+    handoff_generation_verification_secrets: tuple[SecretStr, ...] = Field(default=(), max_length=8, repr=False)
+    code: CodeConfig = Field(default_factory=CodeConfig)
+    runtime: RuntimeConfig = Field(default_factory=RuntimeConfig)
+    plugins_dir: Path | None = None
+    # Ceiling on plugin route request and response bodies; a route may declare a lower limit.
+    plugin_api_max_body_bytes: int = Field(default=32 * 1024 * 1024, ge=1024)
+    # Per-plugin ceilings on host processes, by plugin name, replacing the plugin's declared host_processes.
+    plugin_host_processes: dict[str, Annotated[int, Field(ge=1)]] = Field(default_factory=dict)
+    # Ceiling on host processes of all plugins; each plugin's first process starts regardless.
+    plugin_total_host_processes: int | None = Field(default=None, ge=1)
+    source_plugins_dir: Path | None = None
+    database: DatabaseConfig = Field(default_factory=_default_database, discriminator="kind")
+    handoff_report: HandoffReportConfig = Field(default_factory=HandoffReportConfig)
+    inference: InferenceConfig = Field(default_factory=InferenceConfig)
+    external_skills: ExternalSkillsConfig = Field(default_factory=ExternalSkillsConfig)
+
+    @classmethod
+    @override
+    def settings_customise_sources(
+        cls,
+        settings_cls: type[BaseSettings],
+        init_settings: PydanticBaseSettingsSource,
+        env_settings: PydanticBaseSettingsSource,
+        dotenv_settings: PydanticBaseSettingsSource,
+        file_secret_settings: PydanticBaseSettingsSource,
+    ) -> tuple[PydanticBaseSettingsSource, ...]:
+        if isinstance(init_settings, InitSettingsSource) and init_settings.nested_model_default_partial_update:
+            database = init_settings.init_kwargs.get("database")
+            if isinstance(database, SeekDBConfig) and "database" not in database.model_fields_set:
+                # BaseSettings serializes nested model defaults before validation. Keep an
+                # omitted name implicit so legacy detection and environment selection work.
+                init_settings.init_kwargs["database"] = database.model_dump(exclude={"database"})
+        return super().settings_customise_sources(
+            settings_cls, init_settings, env_settings, dotenv_settings, file_secret_settings
+        )
+
+    @field_validator("cursor_signing_secret")
+    @classmethod
+    def validate_cursor_signing_secret(cls, value: SecretStr | None) -> SecretStr | None:
+        if value is not None and len(value.get_secret_value().encode()) < 32:
+            raise ValueError("cursor signing secret must contain at least 32 bytes")  # noqa: TRY003
+        return value
+
+    @field_validator("handoff_generation_verification_secrets")
+    @classmethod
+    def validate_handoff_verification_secrets(cls, values: tuple[SecretStr, ...]) -> tuple[SecretStr, ...]:
+        if any(len(value.get_secret_value().encode()) < 32 for value in values):
+            raise ValueError("Handoff generation verification secrets must contain at least 32 bytes")  # noqa: TRY003
+        return values
+
+    @field_validator("workspace")
+    @classmethod
+    def resolve_workspace(cls, value: Path) -> Path:
+        workspace = value.expanduser().resolve(strict=False)
+        if not workspace.is_dir():
+            raise ValueError("Server workspace must be an existing directory")  # noqa: TRY003
+        return workspace
+
+    @model_validator(mode="after")
+    def configure_default_local_skill_targets(self) -> ServerSettings:
+        if "external_skills" not in self.model_fields_set:
+            self.external_skills = _default_local_external_skills(self.workspace)
+        return self
+
+    @field_validator("public_url")
+    @classmethod
+    def validate_public_url(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized = value.strip().rstrip("/")
+        if not normalized:
+            return None
+        try:
+            parsed = urlsplit(normalized)
+            hostname = parsed.hostname
+            _ = parsed.port
+        except ValueError as error:
+            raise ValueError("public URL must be a valid absolute HTTP URL") from error  # noqa: TRY003
+        if (
+            parsed.scheme not in {"http", "https"}
+            or hostname is None
+            or parsed.username is not None
+            or parsed.password is not None
+            or parsed.query
+            or parsed.fragment
+        ):
+            raise ValueError("public URL must be an absolute HTTP URL without credentials, query, or fragment")  # noqa: TRY003
+        return normalized
+
+    @model_validator(mode="after")
+    def require_secure_public_url_by_default(self) -> ServerSettings:
+        if self.public_url is None or self.allow_insecure_http:
+            return self
+        parsed = urlsplit(self.public_url)
+        hostname = parsed.hostname
+        loopback = hostname is not None and hostname.lower() == "localhost"
+        if hostname is not None:
+            with suppress(ValueError):
+                loopback = loopback or ip_address(hostname).is_loopback
+        if parsed.scheme != "https" and not loopback:
+            raise ValueError("public URL must use HTTPS unless it points to loopback")  # noqa: TRY003
+        return self
+
+    @field_validator("database", mode="before")
+    @classmethod
+    def default_seekdb_database_path(cls, value: object) -> object:
+        if not isinstance(value, Mapping) or value.get("kind") != "seekdb":
+            return value
+        path = value.get("path")
+        if "path" in value and not (isinstance(path, str) and not path.strip()):
+            return value
+        normalized = dict(value)
+        normalized["path"] = default_seekdb_path()
+        return normalized
+
+    @field_validator("database", mode="before")
+    @classmethod
+    def default_database_to_sqlite(cls, value: object) -> object:
+        if not isinstance(value, Mapping) or value.get("kind", "sqlite") != "sqlite":
+            return value
+        return {"kind": "sqlite", "url": _default_database().url, **value}
+
+    @model_validator(mode="after")
+    def reject_unauthenticated_non_loopback_bind(self) -> ServerSettings:  # noqa: C901 - coupled deployment constraints
+        if self.http.uds is not None and self.runtime.artifact_processing_role == "background":
+            raise ValueError("HTTP_UDS requires an API listener; role=background is not supported")  # noqa: TRY003
+        if self.access.background_principal_description is not None and self.access.background_principal_id is None:
+            raise ValueError("ACCESS_BACKGROUND_PRINCIPAL_DESCRIPTION requires BACKGROUND_PRINCIPAL_ID")  # noqa: TRY003
+        if self.auth.enabled:
+            self.access.mode = "enforced"
+        if self.auth.identities_file is not None:
+            if self.auth.token is not None:
+                raise ValueError("Configure either the identity map or the legacy token")  # noqa: TRY003
+            if self.access.mode != "enforced":
+                raise ValueError("An identity map requires enforced Access Mode")  # noqa: TRY003
+        if self.source_management.manager_subject is not None and self.access.mode != "enforced":
+            raise ValueError("Source management requires authenticated enforced Access Mode")  # noqa: TRY003
+        if (
+            self.dashboard.enabled
+            and self.access.mode == "enforced"
+            and (self.auth.token is None or not self.auth.token.get_secret_value())
+        ):
+            raise ValueError("DASHBOARD_ENABLED with ACCESS_MODE=enforced requires AUTH_TOKEN")  # noqa: TRY003
+        if self.access.mode == "disabled" and self.auth.token is not None:
+            raise ValueError("AUTH_TOKEN requires ACCESS_MODE=enforced or legacy AUTH_ENABLED=true")  # noqa: TRY003
+        if self.access.mode == "disabled" and self.access.background_principal_id is not None:
+            raise ValueError("ACCESS_MODE=disabled cannot configure a background Principal")  # noqa: TRY003
+        if (
+            self.http.uds is None
+            and (self.runtime.artifact_processing_role != "background" or self.metrics.enabled)
+            and is_unauthenticated_non_loopback_bind(
+                host=self.http.host,
+                auth_enabled=self.access.mode != "disabled",
+                allow_unauthenticated_non_loopback=self.allow_unauthenticated_non_loopback,
+            )
+        ):
+            raise UnauthenticatedNonLoopbackBindError(_UNSAFE_BIND_MESSAGE)
+        if not isinstance(self.database, OceanBaseConfig) and self.runtime.artifact_processing_role != "all":
+            raise ValueError(  # noqa: TRY003
+                "runtime.artifact_processing_role must be 'all' for SQLite and embedded seekdb"
+            )
+        return self
+
+
+__all__ = [
+    "AccessControlConfig",
+    "BearerAuthConfig",
+    "DashboardConfig",
+    "HandoffReportConfig",
+    "HttpConfig",
+    "McpConfig",
+    "MetricsConfig",
+    "MissingAuthenticationProviderError",
+    "MissingBearerTokenError",
+    "ServerLoggingConfig",
+    "ServerSettings",
+    "TracingConfig",
+    "UnauthenticatedNonLoopbackBindError",
+    "is_unauthenticated_non_loopback_bind",
+]

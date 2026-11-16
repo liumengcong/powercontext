@@ -1,0 +1,169 @@
+# Copyright (c) 2026 OceanBase.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""Scope-local labels for logical Artifacts and Memory entries.
+
+Tags are discovery metadata, never Artifact content or authorization policy.
+"""
+
+from __future__ import annotations
+
+import unicodedata
+from hashlib import sha256
+from typing import Literal, get_args
+
+import rfc8785
+from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
+
+from powercontext.artifacts import ArtifactRef
+from powercontext.builtin.records import BaseAccessError, BaseArtifactFamily, InvalidBaseAccessRequestError
+
+TaggableArtifactFamily = str
+
+
+def _taggable_families() -> tuple[str, ...]:
+    from powercontext.builtin.plugins.families import plugin_families
+
+    return (*get_args(BaseArtifactFamily), *sorted(plugin_families()))
+
+
+def _require_taggable(family: str) -> str:
+    """Accept built-in families and the plugin families loaded in this process."""
+
+    if family not in _taggable_families():
+        raise InvalidBaseAccessRequestError("family", "is not a taggable Artifact family")
+    return family
+
+
+TagMatch = Literal["all", "any"]
+TagTargetType = Literal["artifact"]
+MAX_TARGET_TAGS = 32
+
+
+class _TagModel(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True, strict=True, hide_input_in_errors=True)
+
+
+class ArtifactTagTarget(_TagModel):
+    """A stable Artifact identity, independent of its current revision."""
+
+    type: Literal["artifact"] = "artifact"
+    family: TaggableArtifactFamily
+    artifact_id: str = Field(min_length=1, max_length=128)
+
+    @field_validator("family")
+    @classmethod
+    def validate_family(cls, value: str) -> str:
+        return _require_taggable(value)
+
+
+TagTarget = ArtifactTagTarget
+
+
+def normalize_tags(
+    tags: tuple[str, ...], *, maximum: int = MAX_TARGET_TAGS, allow_empty: bool = True
+) -> dict[str, str]:
+    """Validate atomically and return display labels in UTF-8 key order.
+
+    Invalid input is never included in an exception or diagnostic message.
+    """
+
+    if len(tags) > maximum or (not tags and not allow_empty):
+        raise InvalidBaseAccessRequestError("tags", "has an invalid number of labels")
+    normalized: dict[str, str] = {}
+    for tag in tags:
+        if (
+            not isinstance(tag, str)
+            or not 1 <= len(tag) <= 64
+            or tag != tag.strip()
+            or any(unicodedata.category(char) in {"Cc", "Cs", "Cn"} for char in tag)
+        ):
+            raise InvalidBaseAccessRequestError("tags", "contains an invalid label")
+        key = unicodedata.normalize("NFC", tag).casefold()
+        if len(key) > 128 or key in normalized:
+            raise InvalidBaseAccessRequestError("tags", "contains an invalid or duplicate normalized label")
+        normalized[key] = tag
+    return dict(sorted(normalized.items(), key=lambda item: item[0].encode("utf-8")))
+
+
+class TagFilter(_TagModel):
+    """Exact label matching applied before candidate limits."""
+
+    tags: tuple[str, ...]
+    match: TagMatch = "all"
+
+    @field_validator("tags")
+    @classmethod
+    def validate_tags(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        normalize_tags(value, maximum=16, allow_empty=False)
+        return value
+
+    @property
+    def keys(self) -> tuple[str, ...]:
+        return tuple(normalize_tags(self.tags, maximum=16, allow_empty=False))
+
+
+class ArtifactTagSet(_TagModel):
+    """The complete current tag set for one target."""
+
+    scope_id: str
+    target: TagTarget
+    tags: tuple[str, ...]
+    tag_digest: str
+
+    @property
+    def etag(self) -> str:
+        payload = {"scope_id": self.scope_id, "target": self.target.model_dump(), "tag_digest": self.tag_digest}
+        return '"tags:' + sha256(rfc8785.dumps(payload)).hexdigest() + '"'
+
+
+def tag_set(scope_id: str, target: TagTarget, tags: tuple[str, ...]) -> ArtifactTagSet:
+    ordered = tuple(normalize_tags(tags).values())
+    digest = "sha256:" + sha256(rfc8785.dumps({"tags": list(ordered)})).hexdigest()
+    return ArtifactTagSet(scope_id=scope_id, target=target, tags=ordered, tag_digest=digest)
+
+
+class TagPreconditionError(BaseAccessError):
+    """The supplied ETag does not name the current target's tag state."""
+
+
+class TagQuery(TagFilter):
+    """A bounded exact query within one authorized Scope."""
+
+    families: tuple[TaggableArtifactFamily, ...] = Field(default_factory=_taggable_families)
+    target_types: tuple[TagTargetType, ...] = ("artifact",)
+    include_inactive: bool = False
+    limit: int = Field(default=50, ge=1, le=100)
+    cursor: str | None = None
+
+    @field_validator("families", "target_types")
+    @classmethod
+    def validate_selection(cls, value: tuple[str, ...], info: ValidationInfo) -> tuple[str, ...]:
+        if not value or len(set(value)) != len(value):
+            raise InvalidBaseAccessRequestError("filters", "must contain distinct nonempty selections")
+        if info.field_name == "families":
+            for family in value:
+                _require_taggable(family)
+        return value
+
+
+class TaggedTarget(ArtifactTagSet):
+    """A tag match pinned to the authoritative current content revision."""
+
+    reference: ArtifactRef
+
+
+class TagQueryPage(_TagModel):
+    items: tuple[TaggedTarget, ...]
+    next_cursor: str | None

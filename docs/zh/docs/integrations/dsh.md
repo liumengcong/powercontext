@@ -1,0 +1,553 @@
+---
+title: DeepSeek Harness
+description: 安装 PowerContext DeepSeek Harness 插件，配置 Scope 内的召回和提示词采集，并核对原生工具。
+status: community
+---
+
+# DeepSeek Harness
+
+`community`
+
+## 直接安装已发布版本（推荐）
+
+先准备好 DeepSeek Harness Web 或 Desktop。发布包已经包含编译后的插件代码，安装时不需要下载 PowerContext 源码，也不需要本地编译。
+
+1. 打开 **Plugins → Add plugin**。
+2. 输入 `powercontext-dsh`；需要固定版本时输入 `powercontext-dsh@<version>`。
+3. 点击 **Install**。如果国内镜像还没有同步目标版本，在 Registry 下拉框切换到官方 npm 源。
+4. 安装完成后按提示重启 DSH。
+
+![在 DSH 中安装 powercontext-dsh](../../../assets/integrations/dsh/install-plugin-zh.gif)
+
+上面的动图使用 Desktop 界面演示，Web 版的入口名称相同。npm 安装只负责安装插件，不会启动或配置 PowerContext Server。
+
+同一个包还导出独立的浏览器入口 `./client`。重启后，DSH Web 和 Desktop 会在账号区域上方显示 PowerContext
+状态控件。没有显示时说明宿主没有加载浏览器入口；已有工具和生命周期行为仍可用，因此这不是 Server 故障。
+点击控件可查看连接诊断、检查版本更新，并选择“打开 Dashboard”；选中会话时，现有 Dashboard 会在 DSH 右侧栏打开。
+
+npm 版本跟随 PowerContext Release：`1.6.0rc1` 对应 `1.6.0-rc.1`，alpha、beta 同样转换。
+正式版本使用 `latest` 标签，预发布版本使用 `next`；安装前先确认目标 npm 版本已经发布。
+P1/P2 在官方 `0.2.2-rc.1`（2026-11-04 发布的预发布版）的 Web 和 Desktop 自带 runtime 上验收；
+不能据此推断其他 DSH 版本兼容。
+
+## 启动 PowerContext Server
+
+需要自动将 Source 提取为 Memory 时，生成并校验 Server 配置：
+
+```bash
+powercontext config init --output powercontext.env
+powercontext config validate --env-file powercontext.env
+powercontext server run --env-file powercontext.env
+```
+
+Server 是前台进程，保持这个终端运行。配置 generation 和定时处理；embedding 用于向量和混合检索，
+显式写入 Memory 和全文检索不依赖 embedding。无模型的 Server 可以健康运行，同时关闭自动提取并返回空召回。
+模型与处理配置参见[完整 Memory 闭环](../get-started/configure-models.md)。
+
+## 连接 DSH 与 Server
+
+Server 默认地址为 `http://127.0.0.1:8000`。在另一个终端启动 DSH，并指定同一个地址：
+
+```bash
+export POWERCONTEXT_DSH_BASE_URL=http://127.0.0.1:8000
+dsh web
+```
+
+PowerShell 使用 `$env:POWERCONTEXT_DSH_BASE_URL = "http://127.0.0.1:8000"`，然后运行 `dsh web`。
+如果之前运行过 `powercontext setup dsh`，插件也会读取已保存的连接设置。环境变量优先于插件 patch 配置，
+并且必须存在于启动 DSH 的终端中；修改其他终端的变量不会更新已经运行的宿主。
+
+启用鉴权时，把同一个 token 配置给 Server 和 DSH：
+
+```bash
+export POWERCONTEXT_SERVER_ACCESS_MODE=enforced
+export POWERCONTEXT_SERVER_AUTH_TOKEN="$POWERCONTEXT_LOCAL_TOKEN"
+powercontext server run
+
+export POWERCONTEXT_DSH_AUTHORIZATION="Bearer $POWERCONTEXT_LOCAL_TOKEN"
+dsh web
+```
+
+不要把 token 写进 patch 文件或 Server URL。需要覆盖 Scope 时，再设置一个已经存在的 `POWERCONTEXT_DSH_SCOPE_ID`；使用 workspace binding 或 Server 默认 Scope 时不需要设置它。
+
+## 先做一次最小验证
+
+在 DSH 会话中依次确认：
+
+1. 运行 `/pc doctor`，确认 Server、Scope、prepare 和原生 MCP 工具检查通过。
+2. 在工具列表中确认能看到 `mcp__powercontext__*`，然后调用一次 `remember_memory`，写入一句独特事实，例如：`aurora deployment color is violet-cedar-1457`。
+3. 等待处理完成，或显式运行 `/pc flush`；再打开同一 workspace/Scope 的新会话，询问这句事实。
+4. 展开实际的 PowerContext snapshot，确认召回内容和引用，而不是只看模型是否猜对。
+
+## 高级用户：从源码安装
+
+源码安装适合需要调试插件、验证未发布改动或固定仓库 commit 的场景。Server 和插件应来自同一个 checkout 或同一个 ref。
+
+使用本站对应的配置向导版本：
+
+```bash
+uv tool install --force "powercontext[cli,server] @ git+https://github.com/oceanbase/powercontext.git@master"
+powercontext setup dsh
+```
+
+开发版从同一个 checkout 安装两个组件，并记录 commit：
+
+```bash
+git clone --branch master https://github.com/oceanbase/powercontext.git powercontext-dsh-dev
+git -C powercontext-dsh-dev rev-parse HEAD
+uv tool install --force "./powercontext-dsh-dev[cli,server]"
+powercontext setup dsh --source ./powercontext-dsh-dev
+```
+
+更新时执行 `git -C powercontext-dsh-dev pull --ff-only`，记录新的 commit，再重复两个安装命令。
+本地目录必须包含仓库提交的已构建文件 `lib/index.js`。`setup dsh --source oceanbase/powercontext --ref master`
+每次都会创建新的 checkout；Server 也应从同一 ref 更新，并在重装插件后重启 DSH。
+
+交互终端会询问安装到 `web` 还是 `desktop`；非交互模式默认使用 `web`，也可以显式指定：
+
+```bash
+powercontext setup dsh --profile web
+powercontext setup dsh --profile desktop
+powercontext doctor dsh --profile desktop
+```
+
+Desktop 必须使用桌面版自带的 dsh 命令，npm/pnpm 版 dsh 无权管理 desktop profile。macOS 启动器位于
+`DeepSeek Harness.app/Contents/Resources/runtime/cli/bin/dsh`；Windows 可以显式传入 `--dsh-command`。
+安装前先完全退出 Desktop，安装后重新打开。Setup 不会替你启动 Server。
+
+Web 和 Desktop 共用已保存的 `hosts.dsh` 连接设置及 `$DSH_HOME/powercontext/credentials.json`。
+`DSH_HOME` 默认是 `~/.dsh`。使用 `powercontext setup dsh --json` 时，可从 `hosts.dsh.result.plugin_path`
+取得插件路径并记录插件 commit；`hosts.dsh.setup: "complete"` 只表示注册完成，不代表运行中的 Server 已就绪。
+插件检查还会分别报告 `browser_client`、`client_declaration`、`asset_export` 和 `host_bundle`。缺少浏览器入口时
+属于无界面安装：工具继续可用，侧栏状态不可用，不会因此误报 Server 故障。
+
+已有界面和模型 patch 可以保留。setup 会检查合成后的 PowerContext 连接设置；冲突处理和动态配置限制见
+[远程连接配置](../operate/connect-remote-server.md)。原生 include 文件必须存在，循环引用、不支持的文件类型或无法验证的动态结构会在保存前报错。
+
+## 可选：为 dsh-pet 开启长期记忆
+
+DSH Web 和 Desktop 的桌宠聊天可以从独立的 PowerContext Scope 查找旧偏好，原有的人设、近期窗口和本地聊天记录照常使用。
+适配器与普通 DSH Agent 插件分开，默认关闭。首个组合是 DSH `0.2.2-rc.1`、dsh-pet `0.4.8`，
+以及来自同一个 PowerContext checkout 或发行版本的适配器与 Server。Desktop 验收覆盖 macOS arm64 应用。
+独立桌宠模式不使用此适配器。
+
+先在 Server 上为每只宠物创建一个[独立 Scope](../workflows/scopes-and-access.md)。使用确切的宠物实例 ID
+（内置默认宠物是 `main`）和 Scope ID。选定的 profile 必须已经包含一条启用的 dsh-pet 条目。
+在 Server 配置生成模型和 [Memory 处理](../get-started/configure-models.md)，文字问答才有机会变成可查找的记忆。
+
+第一次配置时，在终端运行 `powercontext setup dsh`。如果所选 profile 已启用兼容的 dsh-pet，setup 会询问是否开启长期记忆。
+确认后，填写宠物实例 ID（回车使用 `main`），再按编号选择专用 Scope，或输入准确的 Scope ID。
+跳过时长期记忆保持关闭，普通 DSH 安装照常完成。已经配置过的桌宠记忆，重新运行 setup 时省略桌宠选项会保留原配置。
+
+在脚本、管道或 `--json` 模式中开启时，必须同时显式传入以下两个选项：
+
+```bash
+powercontext setup dsh --profile web --server-url http://127.0.0.1:8000 \
+  --dsh-pet-memory on --dsh-pet-bind main=<PET_SCOPE_ID>
+```
+
+Desktop 请改用 `--profile desktop`。先打开已安装的 DSH Desktop 初始化 profile，再完全退出，然后用
+Desktop 自带的命令运行 setup。Web 和 Desktop 分别保存桌宠绑定与待上传队列；
+需要使用哪个 profile，就对哪个 profile 配置。
+
+把 `<PET_SCOPE_ID>` 换成真实 ID，不保留尖括号。多只宠物可重复传入 `--dsh-pet-bind`，每只使用不同的 Scope。
+每次 `on` 指定的是这个 profile 的完整绑定列表。远程 Server 必须使用 HTTPS 和鉴权，沿用绑定到地址的 DSH 凭据配置。
+关闭鉴权的环回 Server 必须允许无凭据访问；宠物记忆不会向该 Server 发送已保存的 DSH 凭据。
+启用访问控制时，凭据需要有目标 Scope 的读取和贡献权限。setup 使用所选 profile 已启用的 dsh-pet，只安装 PowerContext 记忆适配器。
+桌宠缺失、禁用、配置有歧义或版本不兼容时，不影响普通 DSH 安装。查看单独的 `dsh_pet_memory` 结果可确认适配器是否已开启。
+
+重启所选宿主后，运行 `powercontext doctor dsh --profile web` 或 `powercontext doctor dsh --profile desktop`。provider 注册、召回、待上传和 Source 接收各自有状态。
+Server 接收了 Source，不代表已经提取 Memory。召回只查已绑定的 Scope；空结果、断网或超时都保留原始聊天输入。
+若记忆单槽已有其它 provider，适配器不抢占。
+
+开启后，新完成的文字问题和回复会发送到配置的 Server。Server 可能使用配置的模型服务处理这些文本；
+召回的旧事会传给桌宠聊天模型。附件和旧本地历史不会上传。私有队列每个绑定最多保留 128 条，
+超过七天的记录不会发送。重试已入队记录时沿用原 Source 身份和载荷。更换 Server 身份或 Scope 时，
+旧队列不会发往新目标。
+
+```bash
+powercontext setup dsh --profile web --dsh-pet-memory off
+powercontext setup dsh --profile web --dsh-pet-memory off --discard-dsh-pet-pending
+```
+
+第一条命令停止召回、采集和上传，第二条还会丢弃该 profile 的未发送记录。要操作 Desktop 的配置，请把命令中的 profile 改为 `desktop`。两条命令都不能撤回已被 Server 接收的请求。
+清空桌宠聊天不会清空这个队列，也不会删除远端 Source 或 Memory。重启后或用完全相同的绑定重新启用时，
+未过期的待上传记录可能继续重试。同一个 profile 请只运行一个 DSH Host。
+
+## 侧栏状态与诊断
+
+侧栏控件位于账号区域上方，颜色始终配有无障碍标签：
+
+| 状态 | 含义 |
+| --- | --- |
+| 灰色 | 未配置、已禁用，或不是已验证的本机所有者宿主 |
+| 黄色 | 正在连接、重试，或过期观测正在重新核对 |
+| 绿色 | 已通过 liveness、readiness 和所需 PreparedContext 能力 |
+| 红色 | 连接、DSH 认证或必要能力失败 |
+
+点击后打开诊断面板，默认使用简体中文。右上角语言图标可切换 English；明确选择会保存在当前浏览器的
+本地存储中，无法读取偏好时回退到中文。默认视图保留连接状态、Server 地址、工作目录和 Scope；会话 ID、
+部署方式、认证配置来源（不显示认证值）、就绪依赖、context schema 和自动处理观测放在可展开的“技术详情”中。
+页脚显示正在运行的 DSH 插件版本。“技术详情”从 `GET /v1/server-info` 读取连接的 Server 包版本。旧 Server 不支持该接口、
+读取失败或连接观测过期时显示“未知”，不会替换为插件版本或 API 合约版本。版本读取有界且不影响就绪判断。
+面板复用 `/pc` 使用的内存 `RuntimeStatus`，不从日志重建历史，也不调用模型、发送诊断 prompt 或轮询 `/pc doctor`。
+
+桥接接口是插件自有、经 DSH 认证的 `GET /powercontext/status`。DSH 原有 `requestRejection` 始终先执行，不会被削弱；
+此外还必须到达已验证的本机所有者界面：
+
+- DSH Desktop 通过 Desktop Host 提供的受管 `desktop` profile 上下文识别；用同一个 Electron 可执行程序运行
+  Web profile 不会被当作 Desktop 权限。
+- DSH Web 只有在 loopback 请求且所有者明确设置 `ownerLocal: true`（或 `POWERCONTEXT_DSH_OWNER_LOCAL=true`）时接受。
+  只应在自己的本机 Web 宿主上设置。
+- 非 loopback、SSH 启动或未配置的 Web 宿主会被拒绝。非 loopback 显示为可处理失败；SSH 启动或未配置 Web
+  显示为灰色未配置；都不会被静默标为 local。
+
+本机 Web 可在 profile 或 home 的 `cordis.patch.yml` 中加入：
+
+```yaml
+- id: powercontext-dsh
+  config:
+    ownerLocal: true
+```
+
+或在启动 `dsh web` 前设置：
+
+```bash
+POWERCONTEXT_DSH_OWNER_LOCAL=true dsh web
+```
+
+不要在远程、共享、容器或 SSH 转发的宿主上设置。桥接不增加 launch、install 或 target 路由。
+
+页面可见时每十秒刷新；隐藏时暂停，恢复可见后立即重新核对；失败后从 2 秒退避到 30 秒；成功观测超过 30 秒
+会标为过期而不是继续显示绿色。DSH 的 401/403、Server 离线、readiness 依赖失败或缺少 context schema 分别显示
+不同诊断。面板只展示允许字段，不打印启动 token、Authorization 值或 Bearer header。切换会话会更新观测会话并
+丢弃上一会话的迟到响应；没有会话时如实显示，不创建会话。
+
+更新并重启插件会保留已有 profile 和连接设置。卸载会移除浏览器入口、`/powercontext/status`、
+`/powercontext/dashboard` 和 `/powercontext/updates` 路由、订阅和定时器；无界面宿主或没有浏览器入口的包继续保留工具和生命周期 hook。
+
+### 检查 PowerContext 更新
+
+本机 DSH Host 启动后会检查一次 PowerContext 的正式发布版本，之后每小时检查一次。面板关闭或 Server 离线时也会检查。
+要立即检查，可点击页脚的刷新图标。页脚提供发布说明链接，按钮的提示文字会说明检查或安装状态。
+检查不会自动安装。默认仅检查稳定版本；可在插件补丁中设置 `updateChannel: preview` 以包含预览版本，
+或设置 `updateHold: true` 以锁定当前插件版本。
+
+如果正在运行的 Server 已与目标版本匹配，且 DSH 能在符合条件的 npm 源中确认该版本可用且兼容，图标会变为 **更新**。
+点击后，DSH 会在当前 profile 后台安装。请先等待正在运行的会话结束。安装期间可关闭面板，再打开查看进度。
+如 DSH 提示重新加载或重启，只有加载新插件后才会显示新的运行版本。如果 registry 尚未提供该版本，请稍后重试。
+本地源码链接、Git、压缩包和自定义 registry 安装沿用各自的更新流程。测试用模拟的插件管理器覆盖了
+DSH `0.2.2-rc.2` 报告的 npm 更新能力，尚未验证从公共 npm registry 安装，也未在真实 rc.2 宿主上验证完整流程。
+
+“技术详情”提供 [Server 升级指引](../get-started/install-and-run.md#更新或替换安装)。请按当前部署方式更新和重启
+Server，并在需要时按现有流程迁移数据库。
+
+## 在 DSH 中打开 Dashboard
+
+先明确开启 [PowerContext Server Dashboard](../operate/configuration.md)。在选中的 DSH 会话里，点击账号区域上方的
+**PowerContext**，再点击**打开 Dashboard**。现有 Dashboard 会进入右侧栏：DSH Web 使用自带 Browser iframe，
+0.2.2-rc.1 Desktop 发行版使用隔离的 Browser webview。同一 PowerContext 控件仍可打开连接诊断；Dashboard
+原有的权限和写操作确认继续生效。
+
+当前会话的工作区绑定决定 Scope。切换会话后再次打开 Dashboard，会选择新会话的 Scope。没有选中会话时，面板提供
+**在浏览器中打开**，进入 Server 的默认 Dashboard；插件不会创建空会话。Host 通过经 DSH 认证的
+`GET /powercontext/dashboard` 检查可用性，返回 URL 只包含 Dashboard 路径和所选 Scope，不包含 token。Server
+启用 token 认证时，用户直接在 Dashboard 浏览器容器内登录；DSH 的 Server 凭据不会注入页面。登录后返回
+所选 Scope；登录失败可在原登录页更正。
+
+在本地使用 DSH Web 时，DSH 与 Server Dashboard 应使用相同的协议和回环主机名，端口可以不同。例如，两者都用
+`http://127.0.0.1`。若一边用 `localhost`、另一边用 `127.0.0.1`，内嵌页面无法保持 Dashboard 登录。
+面板会提示地址不匹配，并提供**在浏览器中打开**，保留所选 Scope。
+
+Dashboard 未开启时，面板提示在 Server 配置中开启。Host 凭据被拒绝或 Server 不可用会分别提示；Dashboard
+可用性不会改变 API 连接状态。DSH Browser 容器不可用时，面板保留诊断入口、提示无法打开侧栏，并提供
+**在浏览器中打开**。Browser 导航失败由 DSH Browser 标签页显示，恢复 Server 后可刷新。PowerContext Server 不支持 Dashboard 与自定义认证
+Provider 同时启动；应将该 Server 启动错误与 Browser 加载失败分开排查。插件不会自行开启 Dashboard 或降低认证要求。
+此浏览器入口已在官方 DSH 0.2.2-rc.1 Web 和 Desktop 发行版中实测；其他宿主版本需要分别验收容器。
+
+## 诊断运行中的配置
+
+在出现问题的 DSH 会话内运行 `/pc doctor`。报告显示配置来源，分别检查 liveness、readiness、运行能力、
+路由声明、当前 Scope 和只读 prepare 操作。Scope 失败不会遮蔽健康检查。
+端点摘要仅显示 origin、配置来源和是否存在路径前缀，不打印凭据、前缀正文、查询参数或 fragment。
+
+Doctor 会单独报告当前宿主的原生 MCP 工具目录及实际可见的工具名称。`native_mcp_unconfigured` 表示当前
+没有可见的原生 MCP 工具，初始化可能仍在等待或已经失败。若已发现其他原生 MCP 工具但没有
+`mcp__powercontext__*`，Doctor 会报告 `native_mcp_powercontext_missing`。这些结果不会使原本健康的
+生命周期 HTTP 检查失败，但 HTTP 健康不代表面向模型的 MCP 操作已经可用。
+
+失败项提供操作名、稳定 code、可用的 HTTP status/request ID 和具体恢复操作。
+协议错误还提供 `protocol_issue`，指出 JSON、状态码或 PreparedContext 字段违反的具体规则。
+Readiness 保留已识别的依赖状态，包括 HTTP 503 的检查结果，不透传 Server 原始错误文字和召回内容。
+`ok: true` 表示这些只读检查通过，并不代表已经采集或处理了数据。
+
+| 结果 | 含义和处理方式 |
+| --- | --- |
+| `invalid_endpoint` | 修正实际使用的 HTTP(S) base URL，移除 userinfo、query 和 fragment，凭据改用 Authorization。 |
+| `connection_refused` / `dns_lookup_failed` | 分别检查监听地址是否启动、配置的主机名能否解析。 |
+| `request_timeout` | 检查指定操作的 Server 延迟、依赖和实际请求超时设置。 |
+| `connection_failed` | 传输失败且未提供更具体原因；检查端点、代理、网络和 Server 日志。 |
+| `authentication_failed` / `authorization_failed` | 分别检查宿主凭据、当前主体对该操作和 Scope 的权限。 |
+| `not_ready` / `degraded` | 检查报告指出的依赖，例如 `database` 或 `inference.generation`，按该项恢复提示处理。 |
+| `required_route_missing` | 指定操作返回无业务码的 404；检查代理路由、base path 和版本匹配，404 本身不能确定是版本问题。 |
+| `required_route_undeclared` | Server 的 OpenAPI 文档缺少列出的操作声明。 |
+| `memory_protocol_mismatch` / `legacy_memory_operation_unsupported` | 对齐 Server/CLI/插件协议，为实际 profile 重新 setup、重启，再搜索取得 Atomic 引用；不得移除集合 CAS。 |
+| `contract_unavailable` | 无法核对路由声明；通过同一 base path 提供 `/openapi.json`，或单独核对部署的契约。 |
+| `scope_not_found` / `unscoped` | 检查显式 Scope 覆盖、workspace binding 和 Server 默认 Scope；Doctor 不修改它们。 |
+| `invalid_response` | 响应未通过协议校验，即使 HTTP status 是 200。 |
+| `extraction_disabled` / prepare `empty` | 正常的受限能力或空结果，不能据此判断 hook 或 Server 故障。 |
+
+路由检查读取 Server 已有的 `/openapi.json`，区分“声明支持”和“实际探测通过”。
+Doctor 不执行 capture、remember、flush、binding 修改或注入。契约不可读时标为未检查；
+Scope 不可用时跳过 prepare 并说明原因。实际写入与处理由下方显式验收负责。
+
+独立 CLI 的 `powercontext doctor dsh` 检查所选 profile 的注册状态和已安装插件 Memory 协议声明，并检查 CLI
+解析到的端点上的 Server。这些检查不能观察已运行 DSH 进程的环境覆盖或工具缓存；请重启受影响的 profile，
+再在会话里运行 `/pc doctor`。已安装包未声明协议或 Server 契约不可读时，整体结果不会显示成功；注册通过本身
+不足以证明兼容。不指定 Host 的 `powercontext doctor` 使用其选定的客户端端点。
+
+## 查看最近一次自动执行
+
+在出现问题的会话中运行 `/pc`。除了 Scope 和 Server origin，输出中的 `automatic` 对象还会显示该会话和
+工作目录最近一次 pre-step 的实际观测。各阶段独立记录，不受 debug 日志是否可见或诊断限流影响。
+这个视图回答“刚才做了什么”；`/pc doctor` 回答“当前服务和配置是否可用”。
+
+| 阶段 | 含义 |
+| --- | --- |
+| `scope` | `resolved` 表示解析成功；失败或跳过时给出具体原因。 |
+| `prepare` | `ready` 表示取得通过校验的上下文，附字节数；`empty` 是正常空结果，也可能显示失败或跳过。 |
+| `capture` | `accepted` 仅表示 Server 接收了 Source 请求，不代表已经生成 Memory。 |
+| `flush` | `completed` / `cursor_reached` 表示处理游标已到达该 Source 位置；`incomplete` / `flush_budget_exhausted` 表示有界调用结束后仍未观察到游标到达。二者均不能证明产生了 Memory entry。 |
+| `injection` | `appended` 表示插件将 snapshot 加入了返回的 pre-step 消息，不代表模型已经读取或采纳。后续步骤拒绝进入请求、消息包装失败等情况单独说明。 |
+
+每个阶段初始为 `not_yet_observed`（尚未观察），执行中为 `running`。`skipped` 会明确说明
+`capture_disabled`、`no_user_text`、`sensitive_content`、`source_too_long`、`scope_unresolved`、
+`cancelled` 或 `deadline_exceeded` 等原因。`unavailable` 提供操作名、安全的 code/message，以及实际取得的
+HTTP status、协议校验项或通过格式检查的 request ID。传输失败只在证据明确时区分超时、取消、连接被拒绝、
+DNS 或 TLS 原因，无法细分时不会猜测。
+
+例如，`prepare: empty` 和 `capture: accepted` 可以同时成立。捕获或处理失败不会抹掉成功的读取结果。
+超时等未确认写入会带有 `confirmation: unconfirmed`：请求可能已经生效，不能据此断言没有写入，也不能盲目重试。
+这包括成功响应未完整读取，以及无法确定写入结果的 HTTP 错误。
+
+已收到 HTTP 401/403 时则显示 `confirmation: rejected`，表示该请求被认证或授权检查拒绝，不代表先前的捕获
+或同一轮中更早的 flush 请求被撤销。capture 已被拒绝时，flush 的跳过原因是 `capture_rejected`；捕获结果未知时
+仍使用 `capture_not_confirmed`。明确在请求发送前发生的失败不会带上未确认写入标记。
+
+响应头已收到、响应体未能完整读取时，会保留 `http_status` 和通过校验的 `request_id`，并提供
+`failure_phase: response_body` 及 `response_body_error`，后者区分 `request_timeout`、`cancelled`、
+`connection_failed` 和 `response_too_large`。例如 401 响应体超时仍显示 `authentication_failed`、`rejected`
+和响应体超时信息，应先检查凭据，再用请求 ID 定位日志。202 响应体超时仍为未确认，不会启动 flush。
+404 的错误响应体没有读到时，不能据此判断缺少路由。
+
+`attempt`、`turn`、`started_at`、各阶段的 `observed_at` 和 `age_ms` 标识记录属于哪次尝试、发生了多久。
+`freshness: current` 表示尝试发生在五分钟内，并且记录中的 Scope 与当前解析结果一致。
+`stale` 会说明 `age_limit`、`scope_unverified`、`scope_not_observed` 或 `scope_changed`。
+这里的新鲜度仅指本地观测的年龄和适用性，不保证服务端 Memory 是最新的。当前 Scope 检查失败时仍可看到旧记录，
+但会明确标为过期或未核实，不能把旧成功当作当前成功。
+
+插件只在内存中保留最多 64 个会话与工作目录组合，每个组合保留最近一次尝试。新尝试会替换旧记录，旧请求晚完成
+也不能覆盖新结果；达到上限时淘汰旧会话。重启或淘汰后恢复为 `not_yet_observed`。
+状态不保存输入正文、准备的上下文、凭据或原始异常文本。查看状态可以只读解析 Scope，但不会执行 prepare、capture、
+flush 或修改绑定。Doctor 探测和手动操作也不会覆盖自动执行记录。
+
+## 验证采集、处理和新会话召回
+
+这是会写入测试证据的显式验收。完成上述匹配安装和提取配置后：
+
+1. 运行 `/pc doctor`，确认健康、Scope 和 prepare 检查通过，自动提取已启用。
+2. 发送一个独特的项目事实，例如：“The aurora deployment color is violet-cedar-1457.”
+3. 分别核实 Source 接收和处理。等待已配置的 Scheduler，或显式运行 `/pc flush`。
+   按[Memory 闭环 API 检查](../get-started/configure-models.md)确认处理游标达到 Source position，
+   并找到引用该 Source 的 Memory entry。flush 完成但没有生成 entry，不能证明提取成功。
+4. 在同一 workspace/Scope 下打开新会话，询问 aurora 的部署颜色，展开实际召回的 snapshot 检查事实。
+   仅凭模型回答正确，不能证明发生了召回。
+
+在同一 checkout 执行 `make dsh-runtime-test`，可运行不依赖外部模型服务的确定性验收。
+固定版本的真实宿主 fixture 分别检查 Source 接收、处理、新会话召回和 snapshot 持久化。
+模型响应是测试 fixture，不能证明外部推理服务的行为。
+详见[运行时验收说明](https://github.com/oceanbase/powercontext/blob/master/integrations/dsh/plugins/powercontext/tests/runtime/README.md)。
+
+## 理解插件行为
+
+插件通过三条有明确边界的路径访问同一个 Server：
+
+- 每轮模型开口前，先请求 Runtime 准备一个最终、有界的上下文值，再把用户输入采集为 Source 证据；
+- DSH 原生 MCP client 连接 `/mcp/`，并将 Server 工具以 `mcp__powercontext__<operation>` 暴露给模型；
+- `/pc` 命令和自动生命周期阶段使用有界 HTTP client 执行宿主控制与诊断。
+
+自动路径遵循[自动 prompt 隐私策略](index.md#自动-prompt-隐私策略)。上下文准备前，召回查询中识别出的凭据会替换为 `[REDACTED]`，
+包括 `api_key=…`、`password: …` 等凭据赋值，`Authorization` 和 `Cookie` 头，bearer 与服务商 token，私钥，
+以及插件配置的 Server token。含有其中任一项的提示词不会被采集。只是包含标记字样的普通词语，例如 `task-runner`
+或 `token budgets`，会原样采集。该规则识别常见形态，不能覆盖所有 secret。
+
+MCP 面覆盖完整 PowerContext profile：Memory 读写、Source 采集、Work Contract、Handoff 与确认、任务结果、
+Experience、托管和外部 Skill、候选审查、Scope 管理、持久 Scope binding 以及 Artifact 发布；同时还暴露
+profile 契约之外的 Server MCP 工具。插件不会注册 Pi/Hermes 风格的直接 HTTP 操作工具。
+
+依赖 Scope 的 MCP 操作（包括路径参数中的 `scope_id`）必须使用本轮路由元数据中暴露的宿主解析结果。
+不要通过 `mcp__powercontext__resolve_scope_binding` 和 `allow_default: true` 另选 Server 默认 Scope。
+插件会拒绝其他 Scope，而不会重写 MCP 参数；自动生命周期 hook 与模型操作使用相同的项目上下文。
+
+插件启动时，对可选的原生 MCP 初始化最多等待五秒。握手停滞不会阻止普通 DSH 对话，同一个 client 可以在后台
+完成连接。工具注册完成前不可用；选择 MCP 操作前应检查当前工具目录。
+
+原生 MCP 消息经过本进程内的流式转发边界，只能发往配置的固定端点；初始化和工具调用中的所有重定向都会被拒绝。
+工具发现和 session 仍由原生 client 管理。HTTP 失败仅返回受控的状态码和错误码，不转发上游响应正文或诊断头。
+包含疑似秘密的内容写入（包括嵌套的 Handoff 状态、Draft 和准备载体）会在审批和发送前以 `secret_rejected` 拒绝。
+插件的 MCP 目录和写操作审批分类由 Server 公开的 `tools/list` 生成，不使用 HTTP 工具表冒充 MCP 目录。
+
+`mcp__powercontext__handoff_current_work` 自行采集边界并返回 `{boundary, handoff}`，不需要预先采集 Source。
+只传递完整的 `handoff` 成员，再以 `selection: "prepared"` 将该原值交给 `mcp__powercontext__continue_handoff`。
+独立的底层 capture/activate/finalize 流程则把 activation 顶层的 `draft` 交给 finalization，完整保留并传递原生
+finalization 结果，不额外包装或只提取其中的内容。
+
+插件按 `POWERCONTEXT_DSH_SCOPE_ID`、session workspace 持久 binding、Server 默认 Scope 的顺序解析一个由
+Server 管理的 Scope。workspace 路径只会哈希为外部 binding key。缺少 workspace 时使用 Server 默认 Scope，
+不会把 Harness 进程目录作为 Scope。
+
+插件在模型分析提示词前只调用一次 `POST /v1/context/prepare`。显式 `remember_memory` 不需要模型。
+
+## 排查 MCP 和命令的直接调用失败
+
+宿主 Scope 解析失败或未返回 Scope 时，依赖 Scope 的原生 MCP 工具和 `/pc` 命令会在发送操作前返回受控失败。
+刷新失败会清除该会话缓存的 Scope，MCP 调用不能通过上一轮的值绕过失败。普通对话继续，不会因此创建 binding
+或切换其他 Scope。取消信号和现有的单请求超时也适用于生命周期 Scope 解析。
+
+在 DeepSeek Harness 内：
+
+- `/pc doctor` 独立检查健康、能力、路由和 Scope；Scope 解析失败时保留其他层的结果，并跳过 prepare。
+- `/pc capabilities` 直接查询 Server 能力，无需解析 Scope。
+- 未知子命令或缺少参数时，在本地返回用法说明，不访问 Server。
+- 裸 `/pc` 显示已解析的 Scope 和 Server origin。解析失败时返回错误，但仍显示 `scope=unresolved`、受控错误信息
+  和 `/pc doctor` 恢复提示。配置中的 Scope ID 不会被当作已解析成功；显示的 origin 不包含凭据、路径、查询参数和 fragment。
+- `search`、`remember`、`flush`、`review`、`skills scan` 和 `stats` 必须成功解析 Scope；`stats` 仅查询当前 Scope。
+
+| 结果 code | 含义 |
+| --- | --- |
+| `not_found` | 业务 404。可选的 `error_code` 保留已识别的公开原因，例如 `scope_not_found` 或 `memory_not_found`。 |
+| `version_mismatch` | 必需端点返回了没有业务码的 404。应检查 Server 端点和插件、Server 的兼容性；该结果不能证明具体的部署原因。 |
+| `authentication_failed` | Server 返回 401，应检查 Authorization 配置。 |
+| `unavailable` | 连接失败、超时、取消或 HTTP 503。原生诊断使用 `server_unavailable`。 |
+| `unscoped` | resolver 执行完成，但没有返回 Scope。 |
+| `invalid_response` | 客户端识别到无效的 Server 响应。 |
+| `precondition_failed` | tag 或 revision 前置条件已不匹配当前状态，Server 拒绝了本次写入。应重新读取当前引用，用最新的值重试；若 412 响应体带有已公开的业务码，则报告该业务码。 |
+| `precondition_required` | 该变更操作要求携带当前 ETag 的 `If-Match`。应读取资源，再用其 ETag 重试。 |
+| `invalid_cursor` | Server 拒绝了不合法或与本次请求不匹配的分页 cursor。应从列表开头重新请求。它是 cursor 这一对的 400 一半，过期的那一半是 `cursor_expired`。 |
+| `cursor_expired` | Server 拒绝了分页 cursor。应从列表开头重新请求。 |
+| `handoff_report_too_large` | 结果超出响应大小上限；Server 唯一的 413 来源是 Handoff Report 体积限制。应收窄筛选范围后重试。 |
+| `capacity_exceeded` | Server 达到容量上限。应稍后重试。 |
+
+已有冲突和校验错误码（如 `revision_conflict`、`invalid_request`）保持原有含义。业务状态码各自保留结果 code 与恢复
+动作，只有传输失败和 HTTP 5xx 才使用 `unavailable` 的措辞，因此可恢复的拒绝不会被报告为服务中断。响应体带有
+`error.details` 时，该对象会保留在工具结果上。失败结果保留可用的 HTTP status 和 request ID，提示文字使用固定内容，
+不透传 Server message。未知错误码不会出现在 `error_code` 或诊断中，也不会仅因无法识别就被判为版本不匹配。
+
+## 排查自动召回和采集
+
+普通消息也会触发 Scope 解析、上下文准备、提示词采集和可选 flush。这些自动阶段失败时，Harness 对话继续。
+Scope 解析失败会停止本轮后续的 PowerContext 操作，不会换用其他 Scope 或创建 binding。
+
+`powercontext.dsh` 日志通过 `scope_resolve`、`context_prepare`、`capture_content_source`、`flush_memory`
+或 `context_inject` 标识失败阶段。诊断使用固定结果和已识别的公开错误码，不包含 Server message、
+提示词内容、凭据或请求路径。同类重复警告在 60 秒内降噪。logger 自身失败也不会丢弃已准备的上下文或打断对话。
+
+能否看到日志取决于 DSH profile 的原生 exporter 配置。本次测试的 DSH 0.1.2-rc.1 Web profile 默认不向终端
+导出这些警告。如果 profile 使用 Cordis 的 console exporter（`@deepseek-ai/cordis-plugin-logger-console`），
+需要将其 `config.levels.default` 设为 `2` 以包含警告；设为 `3` 可同时查看 debug 事件。
+在启动 `dsh web` 的终端中查看 `powercontext.dsh` 记录。这里使用宿主 logger，不增加模型消息或独立日志面板。
+
+必需路由的 404 只有在没有业务错误码时才记录为 `version_mismatch`。Scope 的业务 404 则记录
+`invalid_response` 和 `error_code: scope_not_found`。resolver 正常结束但未返回 Scope 时记录
+`skipped` 和 `reason: scope_unresolved`。有效的空召回属于正常结果，只写 debug 日志。
+Scope 解析失败时，仍可使用 `/pc doctor` 和 `/pc capabilities` 检查 Server。
+
+上下文准备和采集相互独立：prepare 失败后仍可采集输入；capture 或 flush 失败不会丢弃已经准备好的上下文。
+Source 被接收不代表已经生成 Memory，后者需要 Server 成功处理。取消会停止后续操作；单个请求超时仍沿用
+现有的单请求行为。
+
+## 查看召回的上下文
+
+非空 PreparedContext 只追加一次，消息带有 `source.form=snapshot` 和名为 `PowerContext` 的 section。
+在 DSH 0.1.2-rc.1 Web 中，展开已完成轮次的“已思考”过程内容，再展开“上下文注入 — powercontext-dsh”。
+其他宿主版本也可能将它展示在上下文浏览器中。section 与发给模型、
+保存到会话日志的文字一致：先是插件关于当前请求替换此前快照的说明，然后是 Server 准备的上下文，
+其中 Server 的信任策略（trust policy）位于召回条目之前。
+重新打开会话历史时，这些元数据仍然保留。
+
+空结果和自动失败不会生成 snapshot，也不会向模型注入错误通知。展示使用宿主已有的 snapshot 能力，
+不新增 PowerContext 面板，也不声称存在 Server 尚未返回的 receipt 或来源信息。
+
+## 控制提示词采集
+
+默认开启提示词采集。如果当前工作不应被记录，请在启动 DeepSeek Harness 前关闭：
+
+```bash
+export POWERCONTEXT_DSH_CAPTURE_PROMPTS=false
+dsh web
+```
+
+仅在测试时让插件等待 Source 处理完成：
+
+```bash
+export POWERCONTEXT_DSH_FLUSH_ON_CAPTURE=true
+```
+
+这会给每个提示词增加推理延迟，不是日常交互设置。`timeoutMs`、`requestTimeoutMs`、`maxBytes` 和 `flushMaxCalls` 是插件 patch 配置，不是环境变量。
+
+## 连接启用鉴权的本地 Server
+
+```bash
+export POWERCONTEXT_SERVER_ACCESS_MODE=enforced
+export POWERCONTEXT_SERVER_AUTH_TOKEN="$POWERCONTEXT_LOCAL_TOKEN"
+powercontext server run
+```
+
+在包含匹配 Authorization header 的环境中启动 DeepSeek Harness：
+
+```bash
+export POWERCONTEXT_DSH_AUTHORIZATION="Bearer $POWERCONTEXT_LOCAL_TOKEN"
+dsh web
+```
+
+不要把 token 写进 patch 文件或 Server URL。Server 不可用时，召回和采集会正常降级。插件加载仍然需要 DeepSeek Harness 的 peer 模块。
+
+## 验证安装
+
+```bash
+powercontext doctor
+powercontext doctor dsh
+```
+
+`doctor` 检查已安装的包和 Server。`doctor dsh` 检查 DeepSeek Harness CLI，以及 dump-config 是否包含插件 id `powercontext-dsh`。
+
+## 环境变量
+
+| 变量 | 默认值 | 含义 |
+| --- | --- | --- |
+| `POWERCONTEXT_DSH_BASE_URL` | `http://127.0.0.1:8000` | 插件使用的 Server 地址 |
+| `POWERCONTEXT_DSH_ALLOW_INSECURE_HTTP` | `false` | 显式允许非环回明文 HTTP |
+| `POWERCONTEXT_DSH_SCOPE_ID` | 未设置 | 在 workspace binding 和 Server 默认值之前显式选择已有 Scope |
+| `POWERCONTEXT_DSH_AUTHORIZATION` | 未设置 | MCP 与生命周期 HTTP 请求使用的完整 `Bearer <token>` header |
+| `POWERCONTEXT_DSH_CAPTURE_PROMPTS` | `true` | 把用户提示词采集为 Source 证据 |
+| `POWERCONTEXT_DSH_FLUSH_ON_CAPTURE` | `false` | 采集后等待 Source 处理 |
+
+`timeoutMs`、`requestTimeoutMs`、`maxBytes` 和 `flushMaxCalls` 是插件 patch 配置。Server 不可用时，召回和采集会降级；修改这些变量后需要重启 `dsh web`。
+
+`get_readiness`（包括 `/pc doctor` 中的检查）使用 `max(requestTimeoutMs, 40000)` 毫秒的请求预算，
+以容纳冷缓存下默认 30 秒的推理探测、后续最多 5 秒的访问控制检查，并留出网络传输余量。
+Doctor 在 `configuration.readiness_request_timeout_ms` 中报告该预算，同时保留普通请求的
+`request_timeout_ms`（默认 1000 毫秒）。如果 Server 配置了更长的探测预算，需要相应增加
+`requestTimeoutMs`。其他请求沿用配置的期限，调用方取消仍会立即终止 readiness 请求。
+
+环回地址默认允许明文 HTTP；远程 HTTP 需要显式设置 `POWERCONTEXT_DSH_ALLOW_INSECURE_HTTP=true`，
+HTTPS 证书校验仍然启用。主机地址变量依次读取 `BASE_URL`、`SERVER_URL`、`ENDPOINT`，然后才读取
+`POWERCONTEXT_CLIENT_SERVER_URL`。安装与持久化同意见[连接远程 Server](../operate/connect-remote-server.md)。
+
+
+### Memory 协议升级检查
+
+独立的 `powercontext doctor dsh` 会检查所选 Web/Desktop profile 的注册状态与已安装插件协议声明。缺少声明的旧包
+显示为未验证/degraded，并提示更新；不能仅凭包版本号或健康检查判定兼容。会话内的 `/pc doctor` 还会核对 Server 的
+Memory 协议声明、Atomic 路由及过期的原生 MCP 修改工具。恢复时保留 `legacy_memory_operation_unsupported`，不移除
+CAS、不自动重放写入。具体步骤见 [协议升级](../operate/atomic-memory-migration.md#客户端与-agent-host-的协议兼容)。

@@ -1,0 +1,894 @@
+# Copyright (c) 2026 OceanBase.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""Generate Python API data and operation metadata from OpenAPI."""
+
+from __future__ import annotations
+
+import argparse
+import ast
+from copy import deepcopy
+from pathlib import Path
+from pprint import pformat
+from typing import Literal, TypedDict, cast
+
+import yaml
+from datamodel_code_generator import GenerateConfig, InputFileType, generate
+from datamodel_code_generator.enums import StrictTypes
+from datamodel_code_generator.format import CodeFormatter, Formatter, PythonVersion
+from fastapi.openapi.models import (
+    MediaType,
+    OpenAPI,
+    Parameter,
+    ParameterInType,
+    PathItem,
+    Reference,
+    RequestBody,
+    Response,
+    Schema,
+)
+from fastapi.openapi.models import Operation as OpenAPIOperation
+from pydantic import BaseModel, JsonValue, TypeAdapter, ValidationError
+
+ROOT = Path(__file__).resolve().parents[1]
+CONTRACT_PATH = ROOT / "openapi" / "powercontext.yaml"
+GENERATED_DIR = ROOT / "src" / "powercontext" / "http" / "_generated"
+MODELS_PATH = GENERATED_DIR / "models.py"
+OPERATIONS_PATH = GENERATED_DIR / "operations.py"
+SCHEMA_PATH = GENERATED_DIR / "schema.py"
+DRIFT_MESSAGE = "Generated API code drifted; run 'make api-generate' and review the result."
+_JSON_OBJECT_ADAPTER = TypeAdapter(dict[str, JsonValue])
+_MAX_CANDIDATE_EVIDENCE = 32
+_CANDIDATE_EVIDENCE_VALIDATOR = f"""
+    @model_validator(mode="after")
+    def _reject_excess_candidate_evidence(self):
+        if len(self.source_refs or ()) + len(self.artifact_refs or ()) > {_MAX_CANDIDATE_EVIDENCE}:
+            raise ValueError(  # noqa: TRY003
+                "source_refs and artifact_refs together must not exceed {_MAX_CANDIDATE_EVIDENCE} references"
+            )
+        return self
+"""
+
+
+class ContractGenerationError(RuntimeError):
+    """Raised when the contract exceeds the supported generation boundary."""
+
+    def __init__(self, subject: str, value: object) -> None:
+        self.subject = subject
+        self.value = value
+        super().__init__(f"cannot generate PowerContext API: invalid {subject}: {value!r}")
+
+
+class _AccessRequirement(TypedDict):
+    action: str | None
+    resource: Literal["server", "scope", "artifact"] | None
+    scope_id_field: str | None
+    resolver: str
+
+
+class _FeatureContract(TypedDict):
+    version: dict[str, int]
+    operations: list[str]
+
+
+def generate_sources() -> dict[Path, str]:
+    """Build every generated source without modifying the worktree."""
+
+    try:
+        raw_contract = _JSON_OBJECT_ADAPTER.validate_python(yaml.safe_load(CONTRACT_PATH.read_text()))
+        contract = OpenAPI.model_validate(raw_contract)
+    except ValidationError as exc:
+        raise ContractGenerationError(  # noqa: TRY003
+            "OpenAPI contract",
+            exc.errors(include_url=False),
+        ) from exc
+
+    if contract.components is None or contract.components.schemas is None:
+        raise ContractGenerationError("components.schemas", None)
+    contract_data = _JSON_OBJECT_ADAPTER.validate_python(
+        contract.model_dump(mode="json", by_alias=True, exclude_none=True)
+    )
+    if contract.openapi.startswith("3.0."):
+        _restore_openapi_30_exclusive_bounds(contract_data, raw_contract, contract)
+    return {
+        MODELS_PATH: _generate_models(contract, contract_data),
+        OPERATIONS_PATH: _generate_operations(contract, contract.components.schemas),
+        SCHEMA_PATH: _generate_schema(contract_data),
+    }
+
+
+def _restore_openapi_30_exclusive_bounds(generated: JsonValue, source: JsonValue, model: object) -> None:
+    """Preserve 3.0 bounds that FastAPI's 3.1 Schema coerces to numeric values."""
+
+    if isinstance(generated, dict) and isinstance(source, dict) and isinstance(model, BaseModel):
+        if isinstance(model, Schema):
+            for key in source.keys() & {"exclusiveMinimum", "exclusiveMaximum"}:
+                generated[key] = source[key]
+        for name, field in type(model).model_fields.items():
+            key = field.alias or name
+            if key in generated and key in source:
+                _restore_openapi_30_exclusive_bounds(generated[key], source[key], vars(model)[name])
+    elif isinstance(generated, dict) and isinstance(source, dict) and isinstance(model, dict):
+        nested_models = cast(dict[str, object], model)
+        for key in generated.keys() & source.keys() & nested_models.keys():
+            _restore_openapi_30_exclusive_bounds(generated[key], source[key], nested_models[key])
+    elif isinstance(generated, list) and isinstance(source, list) and isinstance(model, list):
+        for generated_item, source_item, nested in zip(generated, source, model, strict=True):
+            _restore_openapi_30_exclusive_bounds(generated_item, source_item, nested)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--check", action="store_true", help="Fail when generated API code has drifted.")
+    args = parser.parse_args()
+    sources = generate_sources()
+
+    if args.check:
+        if any(not path.exists() or path.read_text() != source for path, source in sources.items()):
+            raise SystemExit(DRIFT_MESSAGE)
+        return
+
+    GENERATED_DIR.mkdir(parents=True, exist_ok=True)
+    for path, source in sources.items():
+        path.write_text(source)
+
+
+def _generate_models(
+    contract: OpenAPI,
+    contract_data: dict[str, JsonValue],
+) -> str:
+    transport_contract = contract.model_copy(deep=True)
+    transport_contract.paths = {}
+    if transport_contract.components is None or transport_contract.components.schemas is None:
+        raise ContractGenerationError("components.schemas", None)
+    contract_schemas = transport_contract.components.schemas
+    exclusive_schemas = {
+        name: schema
+        for name, schema in contract_schemas.items()
+        if isinstance(schema, Schema) and (schema.model_extra or {}).get("x-powercontext-exclusive-fields")
+    }
+    # Keep address alternatives as fields in the SDK; the generated validator retains their exclusivity.
+    transport_data = deepcopy(contract_data)
+    transport_data["paths"] = {}
+    components = _JSON_OBJECT_ADAPTER.validate_python(transport_data["components"])
+    transport_schemas = _JSON_OBJECT_ADAPTER.validate_python(components["schemas"])
+    _inline_artifact_read_family(contract_schemas, transport_schemas)
+    for name in exclusive_schemas:
+        schema_data = _JSON_OBJECT_ADAPTER.validate_python(transport_schemas[name])
+        schema_data.pop("oneOf", None)
+        transport_schemas[name] = schema_data
+    components["schemas"] = transport_schemas
+    transport_data["components"] = components
+    result = generate(
+        transport_data,
+        config=GenerateConfig(
+            input_filename="openapi/powercontext.yaml",
+            input_file_type=InputFileType.OpenAPI,
+            target_python_version=PythonVersion.PY_311,
+            disable_timestamp=True,
+            capitalise_enum_members=True,
+            field_constraints=True,
+            set_default_enum_member=True,
+            strict_nullable=True,
+            strict_types=list(StrictTypes),
+            use_standard_collections=True,
+            use_union_operator=True,
+            use_annotated=True,
+            formatters=[Formatter.RUFF_FORMAT, Formatter.RUFF_CHECK],
+        ),
+    )
+    if not isinstance(result, str):
+        raise ContractGenerationError("model generator output", result)  # noqa: TRY003
+    evidence_models = _candidate_evidence_models(contract_schemas)
+    source = _with_nested_model_defaults(f"{result.rstrip()}\n")
+    source = _with_code_validation(source, contract_schemas)
+    source = _with_source_locator_validation(source, contract_schemas)
+    source = _with_exclusive_fields(source, exclusive_schemas)
+    source = _with_artifact_search_validation(source, contract_schemas)
+    source = _with_family_dispatch(source, contract_schemas)
+    return _with_candidate_evidence_limits(source, evidence_models)
+
+
+def _inline_artifact_read_family(
+    schemas: dict[str, Schema | Reference], transport_schemas: dict[str, JsonValue]
+) -> None:
+    """Keep read families as strings, including custom values, instead of scalar RootModels."""
+
+    family_schema = schemas.get("ArtifactReadFamily")
+    if family_schema is None:
+        return
+    if not isinstance(family_schema, Schema):
+        raise ContractGenerationError("ArtifactReadFamily schema", family_schema)  # noqa: TRY003
+    family_data = _JSON_OBJECT_ADAPTER.validate_python(
+        family_schema.model_dump(mode="json", by_alias=True, exclude_none=True)
+    )
+    for name in ("ArtifactCollectionItem", "ArtifactRevision"):
+        schema = schemas.get(name)
+        if not isinstance(schema, Schema) or schema.properties is None:
+            raise ContractGenerationError("Artifact read schema", name)  # noqa: TRY003
+        schema.properties["family"] = family_schema.model_copy(deep=True)
+        schema_data = _JSON_OBJECT_ADAPTER.validate_python(transport_schemas[name])
+        properties = schema_data.get("properties")
+        if not isinstance(properties, dict):
+            raise ContractGenerationError("Artifact read schema properties", name)  # noqa: TRY003
+        properties["family"] = family_data
+        transport_schemas[name] = schema_data
+
+
+def _with_exclusive_fields(source: str, schemas: dict[str, Schema]) -> str:
+    for name, schema in schemas.items():
+        fields = (schema.model_extra or {})["x-powercontext-exclusive-fields"]
+        if not isinstance(fields, list) or not all(isinstance(field, str) for field in fields):
+            raise ContractGenerationError("x-powercontext-exclusive-fields", fields)
+        source = _with_model_validator_import(source)
+        header = f"class {name}(BaseModel):"
+        start = source.find(header)
+        if start < 0:
+            raise ContractGenerationError("generated model class", name)  # noqa: TRY003
+        next_class = source.find("\nclass ", start + len(header))
+        insert_at = next_class if next_class >= 0 else len(source.rstrip())
+        validator = f"""
+    @model_validator(mode="after")
+    def _validate_exclusive_fields(self):
+        fields = {tuple(fields)!r}
+        present = tuple(field for field in fields if field in self.model_fields_set)
+        if len(present) != 1 or getattr(self, present[0]) is None:
+            raise ValueError("exactly one non-null address is required")  # noqa: TRY003
+        return self
+"""
+        source = f"{source[:insert_at].rstrip()}\n{validator.rstrip()}\n\n{source[insert_at:].lstrip()}"
+    return source
+
+
+def _with_family_dispatch(source: str, schemas: dict[str, Schema | Reference]) -> str:
+    """Select a built-in or plugin branch by family name, so built-in bodies keep their own validation.
+
+    A plugin branch accepts any family name and content object, so plain union matching would
+    let an invalid built-in body pass as a plugin body.
+    """
+
+    for name, schema in schemas.items():
+        if not isinstance(schema, Schema):
+            continue
+        dispatch = (schema.model_extra or {}).get("x-powercontext-family-dispatch")
+        if dispatch is None:
+            continue
+        builtin, plugin = dispatch["builtin"], dispatch["plugin"]
+        builtin_schema = schemas[builtin]
+        if not isinstance(builtin_schema, Schema) or builtin_schema.discriminator is None:
+            raise ContractGenerationError("x-powercontext-family-dispatch", builtin)
+        families = sorted((builtin_schema.discriminator.mapping or {}).keys())
+        snake = "".join(f"_{char.lower()}" if char.isupper() else char for char in name)
+        union = f"        {builtin} | {plugin},\n"
+        start = source.find(f"class {name}(RootModel[{builtin} | {plugin}]):")
+        at = source.find(union, start)
+        if start < 0 or at < 0:
+            raise ContractGenerationError("generated family dispatch model", name)  # noqa: TRY003
+        source = (
+            source[:at]
+            + f'        Annotated[{builtin}, UnionTag("builtin")] | Annotated[{plugin}, UnionTag("plugin")],\n'
+            + f"        Discriminator({snake}_branch),\n"
+            + source[at + len(union) :]
+        )
+        helper = f"""
+
+{snake.upper()}_BUILTIN_FAMILIES = frozenset({families!r})
+
+
+def {snake}_branch(value: Any) -> str:
+    family = value.get("family") if isinstance(value, dict) else getattr(value, "family", None)
+    return "plugin" if isinstance(family, str) and family not in {snake.upper()}_BUILTIN_FAMILIES else "builtin"
+"""
+        source = source[:start].rstrip() + "\n" + helper + "\n\n" + source[start:]
+        # The contract has its own Tag schema, so pydantic's Tag needs another name here.
+        for imported in ("Discriminator", "Tag as UnionTag"):
+            if f"    {imported},\n" not in source:
+                source = source.replace("from pydantic import (\n", f"from pydantic import (\n    {imported},\n", 1)
+    return source
+
+
+def _with_artifact_search_validation(source: str, schemas: dict[str, Schema | Reference]) -> str:
+    """Keep Artifact search's omission, trim, and finite-number semantics in generated models."""
+
+    for name, schema in schemas.items():
+        if not isinstance(schema, Schema):
+            continue
+        kind = (schema.model_extra or {}).get("x-powercontext-artifact-search-validation")
+        if kind is None:
+            continue
+        if kind not in {"request", "fusion", "score"}:
+            raise ContractGenerationError("x-powercontext-artifact-search-validation", kind)
+        if "    field_validator,\n" not in source:
+            source = source.replace("from pydantic import (\n", "from pydantic import (\n    field_validator,\n", 1)
+        header = f"class {name}(BaseModel):"
+        start = source.find(header)
+        if start < 0:
+            raise ContractGenerationError("generated Artifact search model", name)  # noqa: TRY003
+        next_class = source.find("\nclass ", start + len(header))
+        insert_at = next_class if next_class >= 0 else len(source.rstrip())
+        validator = """
+    @field_validator("*", mode="after")
+    @classmethod
+    def _reject_invalid_search_value(cls, value: Any) -> Any:
+        from math import isfinite
+        from pydantic import ValidationError
+        from pydantic_core import InitErrorDetails
+
+        if value is None:
+            raise ValueError("omit the field instead of sending null")  # noqa: TRY003
+        errors: list[InitErrorDetails] = []
+        pending: list[tuple[Any, tuple[str | int, ...]]] = [(value, ())]
+        visited: set[int] = set()
+        while pending:
+            item, path = pending.pop()
+            if isinstance(item, float) and not isfinite(item):
+                errors.append({"type": "finite_number", "loc": path, "input": item})
+            elif isinstance(item, (dict, list, tuple)) and id(item) not in visited:
+                visited.add(id(item))
+                entries = item.items() if isinstance(item, dict) else enumerate(item)
+                pending.extend((nested, (*path, key)) for key, nested in entries)
+        if errors:
+            raise ValidationError.from_exception_data(cls.__name__, errors)
+        return value
+"""
+        if kind == "request":
+            validator = (
+                """
+    @field_validator("query", mode="before")
+    @classmethod
+    def _trim_search_query(cls, value: Any) -> Any:
+        return value.strip() if isinstance(value, str) else value
+"""
+                + validator
+            )
+        source = f"{source[:insert_at].rstrip()}\n{validator.rstrip()}\n\n{source[insert_at:].lstrip()}"
+    return source
+
+
+def _with_code_validation(source: str, schemas: dict[str, Schema | Reference]) -> str:
+    """Preserve semantic constraints that OpenAPI 3.0 cannot express natively."""
+    validators = {
+        "operation": "validate_code_operation(self.model_dump())",
+        "query": "validate_code_query(self.operation.kind, self.expected_fingerprint, self.before_fingerprint)",
+    }
+    for name, schema in schemas.items():
+        if not isinstance(schema, Schema):
+            continue
+        kind = (schema.model_extra or {}).get("x-powercontext-code-validation")
+        if kind is None:
+            continue
+        if kind not in validators:
+            raise ContractGenerationError("x-powercontext-code-validation", kind)
+        source = _with_model_validator_import(source)
+        header = f"class {name}(BaseModel):"
+        start = source.find(header)
+        if start < 0:
+            raise ContractGenerationError("generated model class", name)  # noqa: TRY003
+        next_class = source.find("\nclass ", start + len(header))
+        insert_at = next_class if next_class >= 0 else len(source.rstrip())
+        validator = f"""
+    @model_validator(mode="after")
+    def _validate_code_{kind}(self):
+        from powercontext._code_validation import validate_code_{kind}
+
+        {validators[kind]}
+        return self
+"""
+        source = f"{source[:insert_at].rstrip()}\n{validator.rstrip()}\n\n{source[insert_at:].lstrip()}"
+    return source
+
+
+def _with_source_locator_validation(source: str, schemas: dict[str, Schema | Reference]) -> str:
+    """Keep Source positions bounded and absent locators byte-compatible with old references."""
+
+    for name, schema in schemas.items():
+        if not isinstance(schema, Schema):
+            continue
+        is_range = (schema.model_extra or {}).get("x-powercontext-source-line-range")
+        field = "heading_path" if is_range else "locator"
+        if not is_range and name not in {"SourceReference", "SourceTypeReference", "DreamSourceReference"}:
+            continue
+        header = f"class {name}(BaseModel):"
+        start = source.find(header)
+        if start < 0:
+            raise ContractGenerationError("generated model class", name)  # noqa: TRY003
+        next_class = source.find("\nclass ", start + len(header))
+        end = next_class if next_class >= 0 else len(source.rstrip())
+        block = source[start:end]
+        lines = block.splitlines(keepends=True)
+        tree = ast.parse(block)
+        model = next(node for node in tree.body if isinstance(node, ast.ClassDef))
+        declaration = next(
+            node
+            for node in model.body
+            if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name) and node.target.id == field
+        )
+        # The generator may wrap a field in Annotated/Field for its description or bounds.
+        # Only replace its default, retaining all generated constraints.
+        if declaration.value is None:
+            raise ContractGenerationError("generated model default", field)  # noqa: TRY003
+        line = declaration.value.lineno - 1
+        old = lines[line]
+        lines[line] = (
+            old[: declaration.value.col_offset]
+            + "Field(default=None, exclude_if=lambda value: value is None)"
+            + old[declaration.value.end_col_offset :]
+        )
+        block = "".join(lines)
+        if is_range:
+            source = _with_model_validator_import(source)
+            # Import insertion changes offsets; locate the same class again.
+            start = source.index(header)
+            next_class = source.find("\nclass ", start + len(header))
+            end = next_class if next_class >= 0 else len(source.rstrip())
+            block = (
+                block.rstrip()
+                + """
+
+    @model_validator(mode="after")
+    def _validate_source_line_range(self):
+        from powercontext.sources import SourceLineRangeLocator
+
+        SourceLineRangeLocator.model_validate(self.model_dump(mode="json"))
+        return self
+
+
+"""
+            )
+        source = source[:start] + block + source[end:]
+    return source
+
+
+def _with_nested_model_defaults(source: str) -> str:
+    """Construct typed nested defaults instead of assigning raw JSON to list[Model].
+
+    Pydantic validates the generator's raw dictionaries with validate_default=True,
+    but static checkers correctly reject them as model instances. Validate each
+    nested default explicitly while preserving the OpenAPI values and omission.
+    """
+
+    lines = source.splitlines(keepends=True)
+    offsets = [0]
+    for line in lines:
+        offsets.append(offsets[-1] + len(line))
+    replacements: list[tuple[int, int, str]] = []
+    tree = ast.parse(source)
+    model_names = {node.name for node in tree.body if isinstance(node, ast.ClassDef)}
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.AnnAssign) or not isinstance(node.value, ast.List):
+            continue
+        value = node.value
+        annotation = node.annotation
+        if isinstance(annotation, ast.Subscript) and isinstance(annotation.slice, ast.Tuple):
+            annotation = annotation.slice.elts[0]
+        if not isinstance(annotation, ast.Subscript) or not isinstance(annotation.slice, ast.Name):
+            continue
+        model_name = annotation.slice.id
+        if model_name not in model_names:
+            continue
+        if not value.elts or not all(isinstance(item, ast.Dict) for item in value.elts):
+            continue
+        if value.end_lineno is None or value.end_col_offset is None:
+            continue
+        start = offsets[value.lineno - 1] + value.col_offset
+        end = offsets[value.end_lineno - 1] + value.end_col_offset
+        items = ", ".join(f"{model_name}.model_validate({ast.get_source_segment(source, item)})" for item in value.elts)
+        replacements.append((start, end, f"[{items}]"))
+    for start, end, replacement in sorted(replacements, reverse=True):
+        source = source[:start] + replacement + source[end:]
+    return source
+
+
+def _generate_operations(
+    contract: OpenAPI,
+    schemas: dict[str, Schema | Reference],
+) -> str:
+    imports: set[tuple[str, str]] = set()
+    operations: list[str] = []
+    feature_operations: list[tuple[str, OpenAPIOperation]] = []
+    for path, path_item in (contract.paths or {}).items():
+        if isinstance(path_item, dict):
+            path_item = PathItem.model_validate(path_item)
+        if not isinstance(path_item, PathItem):
+            raise ContractGenerationError("path item", path)  # noqa: TRY003
+        for method, operation in path_item:
+            if not isinstance(operation, OpenAPIOperation):
+                continue
+            if operation.operationId is None or operation.summary is None:
+                raise ContractGenerationError("operation metadata", path)  # noqa: TRY003
+            operation_id = operation.operationId
+            feature_operations.append((operation_id, operation))
+            access = _access_requirement(operation, operation_id)
+            parameters = _operation_parameters(path_item, operation)
+            request_model = _request_model(operation, parameters, schemas)
+            if request_model is not None:
+                imports.add(request_model[:2])
+
+            success_status, success_response = _success_response(operation.responses, path)
+            response_model = (
+                None
+                if success_response.content is None
+                else _model_for_json_content(success_response.content, schemas, path)
+            )
+            if response_model is not None:
+                imports.add(response_model[:2])
+            operations.append(
+                _render_operation(
+                    constant_name=operation_id.upper(),
+                    method=method.upper(),
+                    path=path,
+                    operation_id=operation_id,
+                    request_model=None if request_model is None else request_model[1],
+                    request_location=None if request_model is None else request_model[2],
+                    response_model=None if response_model is None else response_model[1],
+                    path_parameters=tuple(
+                        parameter.name for parameter in parameters if parameter.in_ is ParameterInType.path
+                    ),
+                    success_status=success_status,
+                    summary=operation.summary,
+                    tags=tuple(operation.tags or ()),
+                    scope_mode=_scope_mode(operation),
+                    responses={
+                        int(code) if code.isdecimal() else code: _response_metadata(response)
+                        for code, response in operation.responses.items()
+                    },
+                    access=access,
+                )
+            )
+
+    feature_contracts = _feature_contracts(contract, feature_operations)
+    import_lines = "\n".join(f"from {module} import {name}" for module, name in sorted(imports))
+    rendered_operations = "\n\n".join(operations)
+    source = f"""# generated from openapi/powercontext.yaml; do not edit.
+
+from __future__ import annotations
+
+from typing import Generic, Literal, TypeVar
+
+from pydantic import BaseModel, JsonValue
+
+{import_lines}
+
+OPENAPI_VERSION = {contract.openapi!r}
+API_TITLE = {contract.info.title!r}
+API_DESCRIPTION = {contract.info.description!r}
+API_VERSION = {contract.info.version!r}
+FEATURE_CONTRACTS: dict[str, dict[str, JsonValue]] = {pformat(feature_contracts, sort_dicts=False)}
+
+RequestT = TypeVar("RequestT")
+ResponseT = TypeVar("ResponseT")
+
+
+class Operation(BaseModel, Generic[RequestT, ResponseT]):
+    method: str
+    path: str
+    operation_id: str
+    request_type: type[RequestT] | None
+    request_location: Literal["body", "query"] | None
+    response_type: type[ResponseT] | None
+    path_parameters: tuple[str, ...]
+    success_status: int
+    summary: str
+    tags: tuple[str, ...]
+    scope_mode: Literal["none", "current", "selection"]
+    responses: dict[int | str, dict[str, JsonValue]]
+    access: AccessRequirement | None
+
+
+class AccessRequirement(BaseModel):
+    action: str | None
+    resource: Literal["server", "scope", "artifact"] | None
+    scope_id_field: str | None
+    resolver: str
+
+
+{rendered_operations}
+"""
+    formatter = CodeFormatter(
+        python_version=PythonVersion.PY_311,
+        formatters=[Formatter.RUFF_FORMAT, Formatter.RUFF_CHECK],
+        settings_path=ROOT,
+        encoding="utf-8",
+    )
+    return f"{formatter.format_code(source).rstrip()}\n"
+
+
+def _feature_contracts(
+    contract: OpenAPI, operations: list[tuple[str, OpenAPIOperation]]
+) -> dict[str, _FeatureContract]:
+    """Validate and collect feature versions and membership from the wire contract."""
+
+    versions = (contract.model_extra or {}).get("x-powercontext-feature-contracts", {})
+    if not isinstance(versions, dict):
+        raise ContractGenerationError("x-powercontext-feature-contracts", versions)
+    features: dict[str, _FeatureContract] = {}
+    for name, version in versions.items():
+        if (
+            not isinstance(name, str)
+            or not name.strip()
+            or not isinstance(version, dict)
+            or set(version) != {"major", "minor"}
+            or any(type(value) is not int or value < 0 for value in version.values())
+            or version["major"] < 1
+        ):
+            raise ContractGenerationError("feature version", {name: version})  # noqa: TRY003
+        features[name] = {"version": version, "operations": []}
+    for operation_id, operation in operations:
+        memberships = (operation.model_extra or {}).get("x-powercontext-feature-contracts", [])
+        if (
+            not isinstance(memberships, list)
+            or any(not isinstance(name, str) or name not in features for name in memberships)
+            or len(memberships) != len(set(memberships))
+        ):
+            raise ContractGenerationError(f"feature membership for {operation_id}", memberships)  # noqa: TRY003
+        for name in memberships:
+            features[name]["operations"].append(operation_id)
+    for name, feature in features.items():
+        if not feature["operations"]:
+            raise ContractGenerationError("feature without operations", name)  # noqa: TRY003
+    return features
+
+
+def _generate_schema(contract: dict[str, JsonValue]) -> str:
+    source = f"""# generated from openapi/powercontext.yaml; do not edit.
+
+from pydantic import JsonValue
+
+OPENAPI_SCHEMA: dict[str, JsonValue] = {pformat(contract, width=100, sort_dicts=False)}
+"""
+    formatter = CodeFormatter(
+        python_version=PythonVersion.PY_311,
+        formatters=[Formatter.RUFF_FORMAT, Formatter.RUFF_CHECK],
+        settings_path=ROOT,
+        encoding="utf-8",
+    )
+    return f"{formatter.format_code(source).rstrip()}\n"
+
+
+def _candidate_evidence_models(schemas: dict[str, Schema | Reference]) -> tuple[str, ...]:
+    """Schemas where OpenAPI caps each evidence array at 32 and the combined total is also 32."""
+
+    names: list[str] = []
+    for name, schema in schemas.items():
+        if not isinstance(schema, Schema) or schema.properties is None:
+            continue
+        source_refs = schema.properties.get("source_refs")
+        artifact_refs = schema.properties.get("artifact_refs")
+        if not isinstance(source_refs, Schema) or not isinstance(artifact_refs, Schema):
+            continue
+        if source_refs.maxItems == _MAX_CANDIDATE_EVIDENCE and artifact_refs.maxItems == _MAX_CANDIDATE_EVIDENCE:
+            names.append(name)
+    return tuple(names)
+
+
+def _with_candidate_evidence_limits(source: str, model_names: tuple[str, ...]) -> str:
+    """Inject the combined evidence-limit validator OpenAPI cannot express natively."""
+
+    if not model_names:
+        return source
+    updated = _with_model_validator_import(source)
+    for model_name in model_names:
+        class_header = f"class {model_name}(BaseModel):"
+        start = updated.find(class_header)
+        if start < 0:
+            raise ContractGenerationError("generated model class", model_name)  # noqa: TRY003
+        next_class = updated.find("\nclass ", start + len(class_header))
+        insert_at = next_class if next_class >= 0 else len(updated.rstrip())
+        validator = _CANDIDATE_EVIDENCE_VALIDATOR
+        updated = f"{updated[:insert_at].rstrip()}\n{validator.rstrip()}\n\n{updated[insert_at:].lstrip()}"
+    formatter = CodeFormatter(
+        python_version=PythonVersion.PY_311,
+        formatters=[Formatter.RUFF_FORMAT, Formatter.RUFF_CHECK],
+        settings_path=ROOT,
+        encoding="utf-8",
+    )
+    return f"{formatter.format_code(updated).rstrip()}\n"
+
+
+def _with_model_validator_import(source: str) -> str:
+    if " model_validator," in source or "import model_validator" in source:
+        return source
+    single_line_import = "from pydantic import BaseModel, ConfigDict, Field,"
+    if single_line_import in source:
+        return source.replace(
+            single_line_import,
+            f"{single_line_import} model_validator,",
+            1,
+        )
+
+    multiline_import = "from pydantic import (\n"
+    import_start = source.find(multiline_import)
+    import_end = source.find("\n)", import_start + len(multiline_import))
+    field_import = "    Field,\n"
+    field_position = source.find(field_import, import_start, import_end)
+    if import_start < 0 or import_end < 0 or field_position < 0:
+        raise ContractGenerationError("pydantic import line", source.splitlines()[0:20])  # noqa: TRY003
+    insert_at = field_position + len(field_import)
+    return f"{source[:insert_at]}    model_validator,\n{source[insert_at:]}"
+
+
+def _request_model(
+    operation: OpenAPIOperation,
+    parameters: tuple[Parameter, ...],
+    schemas: dict[str, Schema | Reference],
+) -> tuple[str, str, Literal["body", "query"]] | None:
+    request_body = operation.requestBody
+    if request_body is not None:
+        if not isinstance(request_body, RequestBody):
+            raise ContractGenerationError("request body reference", request_body)  # noqa: TRY003
+        module, name = _model_for_json_content(request_body.content, schemas, "request body")
+        return module, name, "body"
+
+    if not any(parameter.in_ is ParameterInType.query for parameter in parameters):
+        return None
+    operation_id = operation.operationId
+    if operation_id is None:
+        raise ContractGenerationError("query request operation", operation_id)  # noqa: TRY003
+    query_model = f"{''.join(part.title() for part in operation_id.split('_'))}Request"
+    if query_model not in schemas:
+        raise ContractGenerationError("query request model", query_model)  # noqa: TRY003
+    return "powercontext.http._generated.models", query_model, "query"
+
+
+def _operation_parameters(path_item: PathItem, operation: OpenAPIOperation) -> tuple[Parameter, ...]:
+    parameters: list[Parameter] = []
+    for parameter in (*(path_item.parameters or ()), *(operation.parameters or ())):
+        if not isinstance(parameter, Parameter):
+            raise ContractGenerationError("parameter reference", parameter)  # noqa: TRY003
+        parameters.append(parameter)
+    return tuple(parameters)
+
+
+def _success_response(
+    responses: dict[str, Response | object],
+    path: str,
+) -> tuple[int, Response]:
+    successes = [
+        (int(code), response) for code, response in responses.items() if code.isdecimal() and 200 <= int(code) < 300
+    ]
+    if not successes:
+        raise ContractGenerationError("success response", path)  # noqa: TRY003
+    success_status, response = successes[0]
+    if not isinstance(response, Response):
+        raise ContractGenerationError("success response reference", path)  # noqa: TRY003
+    # Idempotent asynchronous operations can return accepted or terminal state
+    # with the same response model. The first status is the route's default.
+    for _, alternative in successes[1:]:
+        if not isinstance(alternative, Response) or alternative.content != response.content:
+            raise ContractGenerationError("success response schema", path)  # noqa: TRY003
+    return success_status, response
+
+
+def _model_for_json_content(
+    content: dict[str, MediaType] | None,
+    schemas: dict[str, Schema | Reference],
+    subject: str,
+) -> tuple[str, str]:
+    if content is None or "application/json" not in content:
+        raise ContractGenerationError("application/json content", subject)  # noqa: TRY003
+    response_schema = content["application/json"].schema_
+    if response_schema is None or response_schema.ref is None:
+        raise ContractGenerationError("schema reference", subject)  # noqa: TRY003
+    schema_ref = response_schema.ref
+    schema_name = schema_ref.removeprefix("#/components/schemas/")
+    if schema_name not in schemas:
+        raise ContractGenerationError("schema reference", schema_ref)  # noqa: TRY003
+    return "powercontext.http._generated.models", schema_name
+
+
+def _response_metadata(response: Response | object) -> dict[str, JsonValue]:
+    if not isinstance(response, Response):
+        return _JSON_OBJECT_ADAPTER.validate_python(response)
+    return _JSON_OBJECT_ADAPTER.validate_python(
+        response.model_dump(mode="json", by_alias=True, exclude_none=True, exclude={"content"})
+    )
+
+
+def _access_requirement(operation: OpenAPIOperation, operation_id: str) -> _AccessRequirement | None:
+    value = (operation.model_extra or {}).get("x-powercontext-access")
+    if value is None:
+        return None
+    if not isinstance(value, dict):
+        raise ContractGenerationError(f"{operation_id} x-powercontext-access", value)  # noqa: TRY003
+    named_resolver = value.get("resolver")
+    if named_resolver is not None:
+        if not isinstance(named_resolver, str) or not named_resolver:
+            raise ContractGenerationError(f"{operation_id} access resolver", named_resolver)  # noqa: TRY003
+        return {
+            "action": None,
+            "resource": None,
+            "scope_id_field": None,
+            "resolver": named_resolver,
+        }
+    action = value.get("action")
+    resource_value = value.get("resource")
+    if isinstance(resource_value, dict):
+        resource = resource_value.get("type")
+        scope_id_field = resource_value.get("scope-id-from")
+    else:
+        # Accept the first implementation's flat shape while downstream branches
+        # regenerate their contract from the RFC 1396 nested form.
+        resource = resource_value
+        scope_id_field = value.get("scope_id_field")
+    resolver = "static" if resource == "server" else "request"
+    if not isinstance(action, str) or not action:
+        raise ContractGenerationError(f"{operation_id} access action", action)  # noqa: TRY003
+    if resource not in {"server", "scope", "artifact"}:
+        raise ContractGenerationError(f"{operation_id} access resource", resource)  # noqa: TRY003
+    if scope_id_field is not None and not isinstance(scope_id_field, str):
+        raise ContractGenerationError(f"{operation_id} access scope_id_field", scope_id_field)  # noqa: TRY003
+    if resource != "server" and resolver == "request" and not scope_id_field:
+        raise ContractGenerationError(f"{operation_id} access scope_id_field", scope_id_field)  # noqa: TRY003
+    return {
+        "action": action,
+        "resource": resource,
+        "scope_id_field": scope_id_field,
+        "resolver": resolver,
+    }
+
+
+def _render_operation(
+    *,
+    constant_name: str,
+    method: str,
+    path: str,
+    operation_id: str,
+    request_model: str | None,
+    request_location: Literal["body", "query"] | None,
+    response_model: str | None,
+    path_parameters: tuple[str, ...],
+    success_status: int,
+    summary: str,
+    tags: tuple[str, ...],
+    scope_mode: Literal["none", "current", "selection"],
+    responses: dict[int | str, dict[str, JsonValue]],
+    access: _AccessRequirement | None,
+) -> str:
+    request_type = "None" if request_model is None else request_model
+    response_type = "None" if response_model is None else response_model
+    rendered_access = (
+        "None"
+        if access is None
+        else "AccessRequirement("
+        f"action={access['action']!r}, "
+        f"resource={access['resource']!r}, "
+        f"scope_id_field={access['scope_id_field']!r}, "
+        f"resolver={access['resolver']!r})"
+    )
+    return f"""{constant_name} = Operation[{request_type}, {response_type}](
+    method={method!r},
+    path={path!r},
+    operation_id={operation_id!r},
+    request_type={request_type},
+    request_location={request_location!r},
+    path_parameters={path_parameters!r},
+    response_type={response_type},
+    success_status={success_status},
+    summary={summary!r},
+    tags={tags!r},
+    scope_mode={scope_mode!r},
+    responses={pformat(responses, width=100, sort_dicts=False)},
+    access={rendered_access},
+)"""
+
+
+def _scope_mode(operation: OpenAPIOperation) -> Literal["none", "current", "selection"]:
+    value = (operation.model_extra or {}).get("x-powercontext-scope-mode", "none")
+    if value not in {"none", "current", "selection"}:
+        raise ContractGenerationError("x-powercontext-scope-mode", value)
+    return value
+
+
+if __name__ == "__main__":
+    main()

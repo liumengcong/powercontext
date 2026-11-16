@@ -1,0 +1,725 @@
+/*
+ * Copyright (c) 2026 OceanBase.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+//! Only invoked by the isolated real-Server harness; never registered as an IPC command.
+use powercontext_desktop::{
+    connections::{
+        profiles::ProfileRepository,
+        session::{CompatibilityProfile, ConnectionManager, WriteStatus},
+    },
+    credentials::{NativeVault, Secret},
+    error::SafeError,
+    transport::{
+        DiscoveryDocument, Endpoint, ServerApi,
+        wire::{ArtifactReference, StatsPeriod},
+    },
+};
+use serde::Deserialize;
+#[derive(Deserialize)]
+struct Fixture {
+    compatibility_profile: CompatibilityProfile,
+    #[serde(default)]
+    product_qualification: bool,
+    response_loss_path: Option<String>,
+    statistics_usage_path: Option<String>,
+    identity_change_path: Option<String>,
+    endpoint: String,
+    scope_id: String,
+    token: Option<Secret>,
+    ca_pem: Option<String>,
+}
+#[tokio::main]
+async fn main() {
+    // Match the worker-task boundary used by IPC instead of the Windows main-thread stack.
+    tokio::spawn(run()).await.unwrap();
+}
+
+async fn run() {
+    let args: Vec<String> = std::env::args().collect();
+    if args.get(1).is_some_and(|a| a == "certificates") {
+        use rcgen::{
+            BasicConstraints, CertificateParams, ExtendedKeyUsagePurpose, IsCa, Issuer, KeyPair,
+            KeyUsagePurpose,
+        };
+        let dir = std::path::Path::new(&args[2]);
+        let mut ca = CertificateParams::new(vec![]).unwrap();
+        ca.is_ca = IsCa::Ca(BasicConstraints::Unconstrained);
+        // Python 3.13+ verifies fixture chains with OpenSSL's strict X.509 rules.
+        ca.use_authority_key_identifier_extension = true;
+        ca.distinguished_name
+            .push(rcgen::DnType::CommonName, "Desktop test CA");
+        ca.key_usages = vec![KeyUsagePurpose::KeyCertSign, KeyUsagePurpose::CrlSign];
+        let ca_key = KeyPair::generate().unwrap();
+        let ca_cert = ca.self_signed(&ca_key).unwrap();
+        let issuer = Issuer::new(ca, ca_key);
+        let mut leaf =
+            CertificateParams::new(vec!["localhost".into(), "127.0.0.1".into()]).unwrap();
+        leaf.extended_key_usages = vec![ExtendedKeyUsagePurpose::ServerAuth];
+        leaf.use_authority_key_identifier_extension = true;
+        let key = KeyPair::generate().unwrap();
+        let cert = leaf.signed_by(&key, &issuer).unwrap();
+        std::fs::write(dir.join("ca.pem"), ca_cert.pem()).unwrap();
+        std::fs::write(dir.join("server.pem"), cert.pem()).unwrap();
+        std::fs::write(dir.join("server-key.pem"), key.serialize_pem()).unwrap();
+        return;
+    }
+    let mut fixture: Fixture = serde_json::from_slice(&std::fs::read(&args[1]).unwrap()).unwrap();
+    let has_token = fixture.token.is_some();
+    let has_stats = fixture
+        .compatibility_profile
+        .operations
+        .iter()
+        .any(|op| op == "get_stats");
+    let endpoint = Endpoint::parse(&fixture.endpoint).unwrap();
+    let api = ServerApi::new(
+        endpoint.clone(),
+        fixture.ca_pem.as_deref().map(str::as_bytes),
+        fixture.token.take(),
+    )
+    .unwrap();
+    let DiscoveryDocument::Server(server) = api.server_info().await.unwrap() else {
+        panic!("expected PowerContext discovery");
+    };
+    let server_id = server.server_id;
+    if args
+        .get(2)
+        .is_some_and(|argument| argument == "discovery-only")
+    {
+        println!("{{\"result\":\"passed\",\"operation\":\"get_server_info\"}}");
+        return;
+    }
+    api.live().await.unwrap();
+    let legacy = !fixture
+        .compatibility_profile
+        .operations
+        .iter()
+        .any(|op| op == "get_connection_identity");
+    if legacy {
+        assert!(
+            has_token,
+            "legacy qualification requires authenticated identity"
+        );
+        assert_eq!(
+            api.connection_identity().await.err().unwrap().code,
+            SafeError::NotFound
+        );
+    } else {
+        let identity = api.connection_identity().await.unwrap();
+        assert_eq!(identity.server_id, server_id);
+        assert_eq!(identity.principal.is_some(), has_token);
+    }
+    api.readiness().await.unwrap();
+    if has_token {
+        api.principal().await.unwrap();
+    } else {
+        assert_eq!(
+            api.principal().await.err().unwrap().code,
+            SafeError::RuntimeNotReady
+        );
+        assert_eq!(
+            api.readiness()
+                .await
+                .unwrap()
+                .checks
+                .get("access_mode")
+                .map(String::as_str),
+            Some("disabled")
+        );
+    }
+    let capabilities = api.capabilities().await.unwrap();
+    assert!(
+        capabilities
+            .artifact_families
+            .iter()
+            .any(|v| v == "atomic-memory")
+    );
+    api.default_scope().await.unwrap();
+    let scopes = api.scopes("", None).await.unwrap();
+    assert!(!scopes.items.is_empty());
+    assert_eq!(
+        api.scope(&fixture.scope_id).await.unwrap().scope_id,
+        fixture.scope_id
+    );
+    let keyword = format!("desktop{}", uuid::Uuid::new_v4().simple());
+    // No model is configured: a fresh Scope must expose real empty inventory
+    // and the Server's zero-filled usage, through the reviewed stats contract.
+    if has_stats {
+        let empty_stats = api
+            .stats(&fixture.scope_id, StatsPeriod::Today)
+            .await
+            .unwrap();
+        assert_eq!(empty_stats.inventory.memory.entries.total, 0);
+        assert_eq!(empty_stats.usage.totals.generation.requests, 0);
+    }
+    let text = format!("{keyword} 中文记录 café\nSecond line.");
+    let saved = api.remember(&fixture.scope_id, &text).await.unwrap();
+    assert_eq!(saved.records.len(), 1);
+    let entry = &saved.records[0];
+    let results = api.search(&fixture.scope_id, &keyword).await.unwrap();
+    assert!(
+        results
+            .hits
+            .iter()
+            .any(|hit| hit.artifact == entry.artifact)
+    );
+    let exact = api
+        .atomic_entry(&fixture.scope_id, &entry.artifact)
+        .await
+        .unwrap();
+    assert_eq!(exact.text, text);
+    // Exercise the same native context owner used by product IPC, not only bare HTTP adapters.
+    let temporary = tempfile::tempdir().unwrap();
+    let repository = ProfileRepository::open(
+        temporary.path().join("profiles.json"),
+        std::sync::Arc::new(NativeVault),
+    )
+    .unwrap();
+    let product = fixture.product_qualification;
+    if fixture.product_qualification && cfg!(feature = "ci-fixtures") {
+        panic!("product qualification must not inject CI records");
+    }
+    let manager = if fixture.product_qualification {
+        ConnectionManager::new(repository)
+    } else {
+        ConnectionManager::with_compatibility(
+            repository,
+            vec![fixture.compatibility_profile.clone()],
+        )
+    };
+    let raw: serde_json::Value = serde_json::from_slice(&std::fs::read(&args[1]).unwrap()).unwrap();
+    let compatibility = if product {
+        manager
+            .state()
+            .unwrap()
+            .compatibility_profiles
+            .into_iter()
+            .find(|profile| {
+                profile.id == fixture.compatibility_profile.id
+                    && profile.operations == fixture.compatibility_profile.operations
+                    && profile.server_commit == fixture.compatibility_profile.server_commit
+                    && profile.contract_sha256 == fixture.compatibility_profile.contract_sha256
+                    && profile.artifact_sha256 == fixture.compatibility_profile.artifact_sha256
+            })
+            .expect("independently qualified product record for the actual wheel")
+            .id
+    } else {
+        fixture.compatibility_profile.id.clone()
+    };
+    let credential = raw["token"]
+        .as_str()
+        .map(|value| serde_json::json!({"secret":value,"storage":"session_only"}));
+    let profile = manager.save_profile(serde_json::from_value(serde_json::json!({
+        "id":null,"revision":null,"name":"Synthetic integration", "endpoint":fixture.endpoint,
+        "authentication":if has_token { "bearer" } else { "unauthenticated_loopback" },
+        "caPem":fixture.ca_pem,"compatibility":compatibility,"keepCredential":false,"credential":credential
+    })).unwrap()).unwrap().profiles[0].id.clone();
+    assert!(manager.state().unwrap().active.is_none());
+    let checked = manager.check(&profile, false).await.unwrap();
+    assert!(checked.active.is_none());
+    assert!(checked.reports.iter().all(|report| report.readiness.value.is_none() && report.readiness_checked_at.is_none()));
+    assert!(
+        checked
+            .reports
+            .iter()
+            .any(|report| report.connection_id == profile)
+    );
+    let state = manager.check(&profile, true).await.unwrap();
+    if legacy {
+        let report = &state.active.as_ref().unwrap().report;
+        assert!(report.compatibility_verified);
+        assert!(report.connection_identity.is_none());
+        assert!(!report.anonymous_access);
+        assert_eq!(
+            report.supported_operations.len(),
+            fixture.compatibility_profile.operations.len()
+        );
+    }
+    let generation = state.generation;
+    let revision = state.active.as_ref().unwrap().report.revision;
+    let probed = manager.probe_readiness(&profile, revision).await.unwrap();
+    assert_eq!(probed.generation, generation);
+    assert!(probed.reports[0].readiness_checked_at.is_some());
+    // Check the real Runtime endpoints before selecting a Scope. No generation model is configured.
+    let live = manager.observe_runtime_liveness(generation).await.unwrap();
+    assert_eq!(live.fact.value.unwrap().status, "ok");
+    let capabilities = manager
+        .observe_runtime_capabilities(generation)
+        .await
+        .unwrap();
+    let runtime_capabilities = capabilities.fact.value.unwrap();
+    assert!(!runtime_capabilities.memory_extraction);
+    if !legacy {
+        assert!(runtime_capabilities.extraction.is_some());
+    }
+    let readiness = manager.probe_runtime_readiness(generation).await.unwrap();
+    assert!(readiness.fact.value.is_some());
+    let generation = manager
+        .select_scope(generation, &fixture.scope_id)
+        .await
+        .unwrap()
+        .generation;
+    let keyword = format!("context{}", uuid::Uuid::new_v4().simple());
+    if has_stats {
+        for period in [
+            StatsPeriod::Today,
+            StatsPeriod::Variant7d,
+            StatsPeriod::Variant30d,
+        ] {
+            let stats = manager.stats(generation, period).await.unwrap();
+            assert_eq!(stats.scope_ids, [fixture.scope_id.clone()]);
+            assert_eq!(stats.inventory.memory.entries.total, 1);
+            assert_eq!(stats.usage.period.preset, period);
+            assert_eq!(stats.usage.totals.generation.requests, 0);
+            assert_eq!(stats.usage.totals.generation.input_tokens, Some(0));
+            assert_eq!(stats.usage.totals.embedding.requests, 0);
+            assert_eq!(stats.recall.totals.preparations, 0);
+            assert_eq!(
+                stats.usage.daily.len(),
+                match period {
+                    StatsPeriod::Today => 1,
+                    StatsPeriod::Variant7d => 7,
+                    StatsPeriod::Variant30d => 30,
+                }
+            );
+        }
+        if let Some(path) = &fixture.statistics_usage_path {
+            std::fs::write(path, b"seed-partial-usage").unwrap();
+            let partial = manager.stats(generation, StatsPeriod::Today).await.unwrap();
+            assert_eq!(partial.usage.totals.generation.requests, 2);
+            assert_eq!(partial.usage.totals.generation.input_tokens, None);
+            assert_eq!(partial.usage.totals.generation.output_tokens, Some(9));
+            assert_eq!(partial.usage.daily.last().unwrap().generation.requests, 2);
+        }
+    }
+    let submitted = format!("  {keyword} 中文 café\nSecond line.  ");
+    let expected = format!("{keyword} 中文 café\nSecond line.");
+    let saved = manager.remember(generation, &submitted).await.unwrap();
+    assert_eq!(saved.record.status, WriteStatus::Succeeded);
+    assert_eq!(
+        saved.record.context.server_id.as_deref(),
+        Some(server_id.as_str())
+    );
+    let result = saved.result.unwrap();
+    assert_eq!(
+        saved.record.references,
+        result
+            .records
+            .iter()
+            .map(|record| record.artifact.clone())
+            .collect::<Vec<_>>()
+    );
+    assert_eq!(result.records.len(), 1);
+    let entry = &result.records[0];
+    assert_eq!(entry.text, expected);
+    let matches = manager.search_memory(generation, &keyword).await.unwrap();
+    assert!(
+        matches
+            .hits
+            .iter()
+            .any(|hit| hit.artifact == entry.artifact)
+    );
+    let exact = manager
+        .atomic_memory_entry(generation, &entry.artifact)
+        .await
+        .unwrap();
+    assert_eq!(exact.text, expected);
+    assert_eq!(matches.hits.len(), 1);
+    assert!(
+        manager
+            .search_memory(generation, "absentuniquefixtureword")
+            .await
+            .unwrap()
+            .hits
+            .is_empty()
+    );
+    let batch = format!("batch{}", uuid::Uuid::new_v4().simple());
+    let mut save_ms = vec![];
+    for index in 0..11 {
+        let start = std::time::Instant::now();
+        let result = manager
+            .remember(generation, &format!("{batch} synthetic note {index}"))
+            .await
+            .unwrap();
+        save_ms.push(start.elapsed().as_secs_f64() * 1000.0);
+        assert_eq!(result.record.status, WriteStatus::Succeeded);
+        let records = result.result.unwrap().records;
+        assert!(!records.is_empty());
+        assert_eq!(result.record.references.len(), records.len());
+        for (record, reference) in records.iter().zip(&result.record.references) {
+            assert_eq!(reference, &record.artifact);
+            let exact = manager
+                .atomic_memory_entry(generation, reference)
+                .await
+                .unwrap();
+            assert_eq!(exact.artifact, *reference);
+            assert_eq!(exact.text, record.text);
+        }
+    }
+    let mut search_ms = vec![];
+    let mut exact_ms = vec![];
+    for _ in 0..20 {
+        let start = std::time::Instant::now();
+        let matches = manager.search_memory(generation, &batch).await.unwrap();
+        search_ms.push(start.elapsed().as_secs_f64() * 1000.0);
+        assert_eq!(matches.hits.len(), 10);
+        let start = std::time::Instant::now();
+        let exact = manager
+            .atomic_memory_entry(generation, &entry.artifact)
+            .await
+            .unwrap();
+        exact_ms.push(start.elapsed().as_secs_f64() * 1000.0);
+        assert_eq!(exact.text, expected);
+    }
+    if let Some(path) = &fixture.response_loss_path {
+        std::fs::write(path, b"0").unwrap();
+        let keyword = format!("lostresponse{}", uuid::Uuid::new_v4().simple());
+        let text = format!("{keyword} committed synthetic note");
+        let outcome = manager.remember(generation, &text).await.unwrap();
+        assert_eq!(outcome.record.status, WriteStatus::Unknown);
+        assert!(outcome.result.is_none());
+        let results = manager.search_memory(generation, &keyword).await.unwrap();
+        assert_eq!(results.hits.len(), 1);
+        let committed = manager
+            .atomic_memory_entry(generation, &results.hits[0].artifact)
+            .await
+            .unwrap();
+        assert_eq!(committed.text, text);
+        assert_eq!(std::fs::read_to_string(path).unwrap(), "1");
+        std::fs::remove_file(path).unwrap();
+    }
+    let scoped_authorization = if let Some(reader_token) = raw["reader_token"].as_str() {
+        // Keep the expanded authorization/statistics acceptance future off the Windows main stack.
+        let tested = Box::pin(verify_revocation(
+            &fixture,
+            &raw,
+            reader_token,
+            &entry.artifact,
+            &expected,
+        ))
+        .await;
+        verify_scope_pages(&fixture, &raw, &manager, generation).await;
+        tested
+    } else {
+        false
+    };
+    if let Some(path) = fixture.identity_change_path {
+        // Test-only out-of-band provider control, not a product endpoint or IPC command.
+        std::fs::write(path, b"change").unwrap();
+        assert_eq!(
+            manager
+                .atomic_memory_entry(generation, &entry.artifact)
+                .await
+                .err()
+                .unwrap()
+                .code,
+            SafeError::StaleContext
+        );
+        let state = manager.state().unwrap();
+        assert!(state.active.is_none());
+        assert!(state.generation > generation);
+        assert_eq!(
+            api.atomic_entry(&fixture.scope_id, &entry.artifact)
+                .await
+                .err()
+                .unwrap()
+                .code,
+            SafeError::Forbidden
+        );
+    }
+    manager.disconnect().unwrap();
+    api.live().await.unwrap();
+    if has_token {
+        let bad = ServerApi::new(
+            endpoint,
+            fixture.ca_pem.as_deref().map(str::as_bytes),
+            Some(Secret::new("wrong-synthetic-token".into()).unwrap()),
+        )
+        .unwrap();
+        assert_eq!(
+            bad.principal().await.err().unwrap().code,
+            SafeError::Unauthorized
+        );
+    }
+    println!(
+        "{}",
+        serde_json::json!({
+            "result":"passed",
+            "qualificationSource": if fixture.product_qualification { "bundled product records" } else { "disposable fixture" },
+            "qualificationId":fixture.compatibility_profile.id,
+            "scopedAuthorizationWithoutObservation":scoped_authorization,
+            "contractSha256":fixture.compatibility_profile.contract_sha256,
+            "performance": {
+                "scope":"Native ConnectionManager round trips, including identity recheck; local fixture; no UI latency or approved budget",
+                "noteCount":13,
+                "save": distribution(save_ms), "search": distribution(search_ms), "exactRead": distribution(exact_ms)
+            }
+        })
+    );
+}
+
+fn distribution(mut values: Vec<f64>) -> serde_json::Value {
+    values.sort_by(f64::total_cmp);
+    let percentile = |p: f64| values[(values.len() as f64 * p).ceil() as usize - 1];
+    serde_json::json!({"samplesMs":values, "count":values.len(), "p50Ms":percentile(0.5), "p95Ms":percentile(0.95)})
+}
+
+async fn verify_scoped_native_access(fixture: &Fixture, reader: &ServerApi, reader_token: &str) {
+    assert_eq!(
+        reader.server_info().await.err().unwrap().code,
+        SafeError::Forbidden
+    );
+    let directory = tempfile::tempdir().unwrap();
+    let repository = ProfileRepository::open(
+        directory.path().join("profiles.json"),
+        std::sync::Arc::new(NativeVault),
+    )
+    .unwrap();
+    let scoped = if fixture.product_qualification {
+        ConnectionManager::new(repository)
+    } else {
+        ConnectionManager::with_compatibility(
+            repository,
+            vec![fixture.compatibility_profile.clone()],
+        )
+    };
+    let state = scoped.save_profile(serde_json::from_value(serde_json::json!({
+            "id":null,"revision":null,"name":"Scoped principal","endpoint":fixture.endpoint,
+            "authentication":"bearer","caPem":null,"compatibility":fixture.compatibility_profile.id,
+            "keepCredential":false,"credential":{"secret":reader_token,"storage":"session_only"}
+        })).unwrap()).unwrap();
+    let state = scoped.check(&state.profiles[0].id, true).await.unwrap();
+    assert_eq!(
+        state
+            .active
+            .as_ref()
+            .unwrap()
+            .report
+            .discovery
+            .as_ref()
+            .unwrap()
+            .status,
+        powercontext_desktop::connections::discovery::DiscoveryStatus::Denied
+    );
+    assert!(
+        state
+            .active
+            .as_ref()
+            .unwrap()
+            .report
+            .connection_identity
+            .as_ref()
+            .unwrap()
+            .value
+            .is_some()
+    );
+    let state = scoped
+        .select_scope(state.generation, &fixture.scope_id)
+        .await
+        .unwrap();
+    let text = format!(
+        "scoped{} independently authorized note",
+        uuid::Uuid::new_v4().simple()
+    );
+    let saved = scoped.remember(state.generation, &text).await.unwrap();
+    assert_eq!(saved.record.status, WriteStatus::Succeeded);
+    assert!(
+        !scoped
+            .search_memory(state.generation, &text)
+            .await
+            .unwrap()
+            .hits
+            .is_empty()
+    );
+    let exact = scoped
+        .atomic_memory_entry(state.generation, &saved.record.references[0])
+        .await
+        .unwrap();
+    assert_eq!(exact.text, text);
+    if fixture
+        .compatibility_profile
+        .operations
+        .iter()
+        .any(|op| op == "get_stats")
+    {
+        scoped
+            .stats(state.generation, StatsPeriod::Today)
+            .await
+            .unwrap();
+    }
+}
+
+async fn verify_revocation(
+    fixture: &Fixture,
+    raw: &serde_json::Value,
+    reader_token: &str,
+    artifact: &ArtifactReference,
+    expected: &str,
+) -> bool {
+    // Only the isolated test administrator mutates fixture policy; never exposed to Desktop IPC.
+    let client = reqwest::Client::builder().no_proxy().build().unwrap();
+    let admin = raw["token"].as_str().unwrap();
+    let binding: serde_json::Value = client
+        .post(format!("{}/v1/access/bindings/create", fixture.endpoint))
+        .bearer_auth(admin)
+        .json(&serde_json::json!({
+            "subject":{"type":"user","id":"desktop-fixture-reader"},
+            "resource":{"type":"scope","scope_id":fixture.scope_id},
+            "role":"scope.contributor","idempotency_key":"desktop-reader-grant"
+        }))
+        .send()
+        .await
+        .unwrap()
+        .error_for_status()
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    let reader = ServerApi::new(
+        Endpoint::parse(&fixture.endpoint).unwrap(),
+        None,
+        Some(Secret::new(reader_token.into()).unwrap()),
+    )
+    .unwrap();
+    let principal = reader.principal().await.unwrap();
+    let scoped_authorization = if fixture
+        .compatibility_profile
+        .operations
+        .iter()
+        .any(|op| op == "get_connection_identity")
+    {
+        Box::pin(verify_scoped_native_access(fixture, &reader, reader_token)).await;
+        true
+    } else {
+        false
+    };
+    reader
+        .stats(&fixture.scope_id, StatsPeriod::Today)
+        .await
+        .unwrap();
+    assert_eq!(
+        reader
+            .atomic_entry(&fixture.scope_id, artifact)
+            .await
+            .unwrap()
+            .text,
+        expected
+    );
+    client
+        .post(format!("{}/v1/access/bindings/revoke", fixture.endpoint))
+        .bearer_auth(admin)
+        .json(&serde_json::json!({
+            "binding_id":binding["binding_id"],"expected_version":binding["version"],
+            "idempotency_key":"desktop-reader-revoke"
+        }))
+        .send()
+        .await
+        .unwrap()
+        .error_for_status()
+        .unwrap();
+    assert_eq!(reader.principal().await.unwrap(), principal);
+    assert_eq!(
+        reader
+            .stats(&fixture.scope_id, StatsPeriod::Today)
+            .await
+            .err()
+            .unwrap()
+            .code,
+        SafeError::Forbidden
+    );
+    assert_eq!(
+        reader
+            .atomic_entry(&fixture.scope_id, artifact)
+            .await
+            .err()
+            .unwrap()
+            .code,
+        SafeError::Forbidden
+    );
+    scoped_authorization
+}
+
+async fn verify_scope_pages(
+    fixture: &Fixture,
+    raw: &serde_json::Value,
+    manager: &ConnectionManager,
+    generation: u32,
+) {
+    let client = reqwest::Client::builder().no_proxy().build().unwrap();
+    let title = format!("paging{}", uuid::Uuid::new_v4().simple());
+    let mut created = std::collections::BTreeSet::new();
+    for index in 0..51 {
+        let scope: serde_json::Value = client
+            .post(format!("{}/v1/scopes", fixture.endpoint))
+            .bearer_auth(raw["token"].as_str().unwrap())
+            .json(&serde_json::json!({
+                "title":title,"summary":"Synthetic same-title pagination fixture",
+                "idempotency_key":format!("{title}-{index}")
+            }))
+            .send()
+            .await
+            .unwrap()
+            .error_for_status()
+            .unwrap()
+            .json()
+            .await
+            .unwrap();
+        assert!(created.insert(scope["scope_id"].as_str().unwrap().to_owned()));
+    }
+    let first = manager.scopes(generation, &title, None).await.unwrap();
+    assert_eq!(first.items.len(), 50);
+    let second = manager
+        .scopes(
+            generation,
+            &title,
+            first
+                .next_cursor
+                .as_ref()
+                .and_then(|cursor| cursor.as_deref()),
+        )
+        .await
+        .unwrap();
+    assert!(first.next_cursor.is_some());
+    assert_eq!(second.items.len(), 1);
+    assert!(second.next_cursor.flatten().is_none());
+    let found: std::collections::BTreeSet<_> = first
+        .items
+        .iter()
+        .chain(second.items.iter())
+        .map(|scope| scope.scope_id.clone())
+        .collect();
+    assert_eq!(found, created);
+    // Exact lookups distinguish the same display name without modifying the active memory Scope.
+    let api = ServerApi::new(
+        Endpoint::parse(&fixture.endpoint).unwrap(),
+        None,
+        Some(Secret::new(raw["token"].as_str().unwrap().into()).unwrap()),
+    )
+    .unwrap();
+    for id in [created.first().unwrap(), created.last().unwrap()] {
+        assert_eq!(&api.scope(id).await.unwrap().scope_id, id);
+    }
+    assert_eq!(
+        manager
+            .state()
+            .unwrap()
+            .active
+            .unwrap()
+            .scope
+            .unwrap()
+            .scope_id,
+        fixture.scope_id
+    );
+}

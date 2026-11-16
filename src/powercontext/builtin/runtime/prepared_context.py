@@ -1,0 +1,1125 @@
+# Copyright (c) 2026 OceanBase.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""Prepare final, bounded context from approved Artifact evidence."""
+
+from __future__ import annotations
+
+import contextlib
+import json
+from collections import Counter
+from collections.abc import Callable, Iterator, Sequence
+from dataclasses import dataclass, replace
+from itertools import chain
+from typing import Literal, TypeVar
+
+from pydantic import ConfigDict
+from typing_extensions import override
+
+from powercontext.artifacts import ArtifactAddress, ArtifactLineage, ArtifactRef
+from powercontext.builtin.artifacts.experience import Experience, ExperienceSearchHit, render_experience
+from powercontext.builtin.artifacts.profile.models import Profile
+from powercontext.builtin.artifacts.topic_memory import TopicMemory, TopicMemorySearchHit
+from powercontext.builtin.runtime.atomic_memory import AtomicMemoryDependencySelection, AtomicMemorySearchHit
+from powercontext.builtin.runtime.errors import PreparedContextInvariantError
+from powercontext.builtin.runtime.models import (
+    BUILTIN_CONTEXT_FAMILIES,
+    ContextAssembly,
+    ContextAssemblySection,
+    PrepareContextRequest,
+    PreparedContext,
+    PreparedContextReason,
+)
+from powercontext.builtin.runtime.prepared_code import (
+    CodeEvidenceRef,
+    PreparedCodeCandidate,
+    assemble_code,
+)
+from powercontext.builtin.runtime.prepared_text import (
+    TRUST_POLICY,
+    ContextTextItem,
+    FitOutcome,
+    display_body_bytes,
+    fit_context_text_item,
+    render_context_text,
+    rendered_text_fragment_bytes,
+)
+from powercontext.builtin.runtime.recall_sufficiency import RecallBudgetView
+
+_MIN_TRUNCATED_CONTENT_BYTES = 64
+_ELLIPSIS = "…"
+_BEGIN_MARKER = "BEGIN_POWERCONTEXT_PREPARED_CONTEXT_V1"
+_END_MARKER = "END_POWERCONTEXT_PREPARED_CONTEXT_V1"
+# ``str.splitlines()`` ends a line at these characters, but ``json.dumps(ensure_ascii=False)`` emits them raw, so a
+# body could carry one inside its JSON string literal and still end a line for a line-oriented reader. The remaining
+# ``splitlines()`` boundaries (``\n``, ``\v``, ``\f``, ``\r``, ``\x1c``-``\x1e``) are already escaped by
+# ``json.dumps``. RFC 1489 escapes U+2028 and U+2029 the same way for identity fields.
+_LINE_BOUNDARY_ESCAPES = {ord(char): f"\\u{ord(char):04x}" for char in "\u0085\u2028\u2029"}
+_Item = TypeVar("_Item")
+
+
+@dataclass(frozen=True)
+class _PreparedContextEntry:
+    origin: PreparedContextOrigin
+    kind: str
+    citation: dict[str, object]
+    content: str
+    truncated: bool
+
+
+@dataclass(frozen=True)
+class _EntryFit:
+    """One fit attempt on the non-assembly path: the entry that fitted, or why none did.
+
+    The two drop reasons are disjoint and mirror the assembly path's
+    :class:`~powercontext.builtin.runtime.prepared_text.FitOutcome`. An entry is dropped
+    *below the minimum truncated content* when a shorter rendering exists and fits but is too
+    short to be an honest delivery; it is dropped *with no fitting truncation* when no
+    shortened rendering fits at all.
+    """
+
+    entry: _PreparedContextEntry | None = None
+    dropped_below_min_bytes: bool = False
+    dropped_no_fitting_truncation: bool = False
+
+
+@dataclass(frozen=True)
+class PreparedContextOmissions:
+    """Aggregate counts of the items the byte budget omitted in one build.
+
+    Every count is a per-call aggregate, never per-entry attribution and never a verdict about
+    an entry: an entry losing to the budget is not a negative result about that entry.
+
+    ``dropped_items`` is the sum of its two sub-counts, so "the budget could not fit this
+    item" can be told apart from "this item was too short to truncate into the remaining
+    space". A single merged counter would misreport the second cause as the first.
+    """
+
+    truncated_items: int = 0
+    dropped_items: int = 0
+    dropped_below_min_bytes: int = 0
+    dropped_no_fitting_truncation: int = 0
+
+
+@dataclass(frozen=True)
+class PreparedContextFragment:
+    origin: PreparedContextOrigin | CodeEvidenceRef
+    kind: str
+    rendered_bytes: int
+    truncated: bool
+
+
+@dataclass(frozen=True)
+class PreparedContextBuild:
+    """Final public context and the exact origins selected to produce it.
+
+    ``lineages`` carries exact, immutable facts for token accounting, never current
+    head or authorization decisions.
+
+    ``omissions`` is always filled by the Builder. The RFC 1560 recall trace is deliberately
+    **not** a field here: ``ScopedContextApplication._prepare`` returns ``build.context`` and
+    discards the rest, so such a field would have no production observer. The trace is
+    delivered to the Runtime's scoped statistics recorder or an explicit
+    ``RecallEffortSink`` instead.
+    """
+
+    context: PreparedContext
+    origins: tuple[PreparedContextOrigin, ...]
+    omissions: PreparedContextOmissions = PreparedContextOmissions()
+    code_origins: tuple[CodeEvidenceRef, ...] = ()
+    lineages: tuple[tuple[ArtifactAddress, ArtifactLineage], ...] = ()
+    fragments: tuple[PreparedContextFragment, ...] = ()
+    omitted: tuple[tuple[str, str, int], ...] = ()
+    #: Why this preparation lost a retrieval channel. Filled by the layer that ran the search,
+    #: never by the Builder: a pure selector cannot know whether a provider answered in time.
+    degradation: PreparedContextReason | None = None
+    reuse_roots: tuple[AtomicMemoryDependencySelection, ...] = ()
+
+
+PreparedContextOrigin = ArtifactRef | ArtifactAddress
+
+
+class _BudgetArtifactRef(ArtifactRef):
+    """Immutable budget evidence with the same identity as the original reference."""
+
+    model_config = ConfigDict(frozen=True)
+
+    @override
+    def __eq__(self, other: object) -> bool:
+        # Pydantic normally compares model types too; freezing must not change origin equality. Comparing the dumped
+        # fields instead of a literal field list keeps equality in step with the inherited field-derived ``__hash__``.
+        return isinstance(other, ArtifactRef) and self.model_dump() == other.model_dump()
+
+
+class _BudgetArtifactAddress(ArtifactAddress):
+    """Immutable budget address, including its nested reference."""
+
+    model_config = ConfigDict(frozen=True)
+    artifact: _BudgetArtifactRef
+
+    @override
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, ArtifactAddress) and (self.scope_id, self.artifact) == (other.scope_id, other.artifact)
+
+
+def _budget_origin(origin: PreparedContextOrigin) -> PreparedContextOrigin:
+    snapshot_type = _BudgetArtifactAddress if isinstance(origin, ArtifactAddress) else _BudgetArtifactRef
+    return snapshot_type.model_validate(origin.model_dump())
+
+
+PreparedContextBudgetDisposition = Literal[
+    "full",
+    "truncated",
+    "dropped_below_min_bytes",
+    "dropped_no_fitting_truncation",
+    "entry_limit",
+    "family_limit",
+]
+
+
+@dataclass(frozen=True)
+class PreparedContextBudgetRecord:
+    """What the byte budget did to one candidate that reached budget fitting.
+
+    Internal evaluation evidence, never part of a public response. A record binds the exact
+    candidate by ``origin`` and ``kind`` and carries sizes only: no query, body, or citation text.
+
+    ``rank`` is the candidate's 1-based position in the default path's interleaved fitting
+    order, or its family-local recall rank on the text-assembly path. ``display_bytes`` is the
+    complete body the path truncates: the raw entry content on the default path, the normalized
+    and escaped body on the text-assembly path. ``delivered_bytes`` is the delivered body,
+    including a truncation ellipsis, and ``fragment_bytes`` is the rendered fragment the Receipt
+    measures; both are ``0`` for a candidate that was not delivered.
+    """
+
+    origin: PreparedContextOrigin
+    kind: str
+    rank: int
+    disposition: PreparedContextBudgetDisposition
+    source_bytes: int
+    display_bytes: int
+    delivered_bytes: int = 0
+    fragment_bytes: int = 0
+
+
+@dataclass(frozen=True)
+class PreparedContextBudgetTrace:
+    """Budget records of one successful build, in the order the Builder visited the candidates.
+
+    ``content_bytes`` is the rendered envelope of this build's history share, ``0`` for an empty result. When code
+    evidence shares the preparation, the trace comes from the history sub-build, so code bytes are excluded.
+    """
+
+    path: Literal["default", "assembly"]
+    max_bytes: int
+    content_bytes: int
+    records: tuple[PreparedContextBudgetRecord, ...]
+
+
+PreparedContextBudgetRecorder = Callable[[PreparedContextBudgetTrace], None]
+
+
+@dataclass(frozen=True)
+class _BudgetVisit:
+    entry: _PreparedContextEntry
+    rank: int
+    disposition: PreparedContextBudgetDisposition
+    delivered: _PreparedContextEntry | ContextTextItem | None = None
+
+
+@dataclass(frozen=True)
+class _BudgetCap:
+    """Text-assembly candidates left after a section cap, resolved only when the trace is reported."""
+
+    entries: tuple[_PreparedContextEntry, ...]
+    seen: frozenset[tuple[str, str, str, int, str | None, str | None]]
+    rank: int
+    disposition: Literal["entry_limit", "family_limit"]
+
+
+_BudgetLedger = list[_BudgetVisit | _BudgetCap]
+
+
+@dataclass(frozen=True)
+class PreparedMemoryCandidates:
+    """Memory candidates read from one Scope."""
+
+    scope_id: str
+    hits: tuple[AtomicMemorySearchHit, ...] = ()
+
+
+@dataclass(frozen=True)
+class PreparedExperienceCandidates:
+    """Experience candidates read from one Scope."""
+
+    scope_id: str
+    hits: tuple[ExperienceSearchHit, ...] = ()
+
+
+@dataclass(frozen=True)
+class PreparedProfileCandidate:
+    """The latest committed Profile snapshot read from one Scope."""
+
+    scope_id: str
+    profile: Profile
+
+
+class PreparedContextBuilder:
+    """Select and render final context without I/O, persistence, or reranking."""
+
+    memory_candidate_limit = 16
+    topic_memory_candidate_limit = 8
+    experience_candidate_limit = 8
+    candidate_limit = memory_candidate_limit
+    entry_limit = 8
+    topic_memory_entry_limit = 8
+    experience_entry_limit = 2
+    max_entry_content_bytes = 2000
+    _text_entry_limit: int | None = None
+
+    def __init__(self, *, budget_recorder: PreparedContextBudgetRecorder | None = None) -> None:
+        """Create a Builder; ``budget_recorder`` receives one budget trace per successful build.
+
+        Recording is off by default. A recorder only observes: its trace never changes the
+        build, and a recorder or record computation that fails is ignored.
+        """
+
+        self._budget_recorder = budget_recorder
+
+    def empty(self) -> PreparedContext:
+        return PreparedContext(status="empty", content=None, content_bytes=0)
+
+    def build(
+        self,
+        *,
+        request: PrepareContextRequest,
+        scope_id: str | None = None,
+        hits: Sequence[AtomicMemorySearchHit] = (),
+        topic_memory_hits: Sequence[TopicMemorySearchHit] = (),
+        experience_hits: Sequence[ExperienceSearchHit] = (),
+    ) -> PreparedContext:
+        return self.build_result(
+            request=request,
+            scope_id=scope_id,
+            hits=hits,
+            topic_memory_hits=topic_memory_hits,
+            experience_hits=experience_hits,
+        ).context
+
+    def build_result(
+        self,
+        *,
+        request: PrepareContextRequest,
+        scope_id: str | None = None,
+        hits: Sequence[AtomicMemorySearchHit] = (),
+        topic_memory_hits: Sequence[TopicMemorySearchHit] = (),
+        experience_hits: Sequence[ExperienceSearchHit] = (),
+    ) -> PreparedContextBuild:
+        return self.build_scopes_result(
+            request=request,
+            current_scope_id=scope_id,
+            memory_candidates=(PreparedMemoryCandidates(scope_id=scope_id or "", hits=tuple(hits)),),
+            experience_candidates=(PreparedExperienceCandidates(scope_id=scope_id or "", hits=tuple(experience_hits)),),
+            topic_memory_hits=topic_memory_hits,
+        )
+
+    def build_scopes_result(
+        self,
+        *,
+        request: PrepareContextRequest,
+        current_scope_id: str | None,
+        memory_candidates: Sequence[PreparedMemoryCandidates] = (),
+        topic_memory_hits: Sequence[TopicMemorySearchHit] = (),
+        experience_candidates: Sequence[PreparedExperienceCandidates] = (),
+        profile_candidates: Sequence[PreparedProfileCandidate] = (),
+        code_candidates: Sequence[PreparedCodeCandidate] = (),
+    ) -> PreparedContextBuild:
+        if request.include_code:
+
+            def historical(history_request: PrepareContextRequest, entries: int) -> PreparedContextBuild:
+                builder = PreparedContextBuilder(budget_recorder=self._budget_recorder)
+                builder.entry_limit = entries
+                builder._text_entry_limit = entries if entries < self.entry_limit else None
+                return builder.build_scopes_result(
+                    request=history_request.model_copy(update={"include_code": False}),
+                    current_scope_id=current_scope_id,
+                    memory_candidates=memory_candidates,
+                    topic_memory_hits=topic_memory_hits,
+                    experience_candidates=experience_candidates,
+                    profile_candidates=profile_candidates,
+                )
+
+            return assemble_code(request, code_candidates, self.entry_limit, historical)
+
+        if sum(len(candidates.hits) for candidates in memory_candidates) > self.memory_candidate_limit:
+            raise PreparedContextInvariantError("memory-candidate-limit")
+        if len(topic_memory_hits) > self.topic_memory_candidate_limit:
+            raise PreparedContextInvariantError("topic-memory-candidate-limit")
+        if sum(len(candidates.hits) for candidates in experience_candidates) > self.experience_candidate_limit:
+            raise PreparedContextInvariantError("experience-candidate-limit")
+
+        budget_ledger: _BudgetLedger | None = [] if self._budget_recorder is not None else None
+        content, origins, omissions, fragments, omitted = self._select_entries(
+            request=request,
+            current_scope_id=current_scope_id,
+            memory_candidates=memory_candidates,
+            experience_candidates=experience_candidates,
+            profile_candidates=profile_candidates,
+            topic_memory_hits=topic_memory_hits,
+            budget_ledger=budget_ledger,
+        )
+        if content is None:
+            self._report_budget(request, budget_ledger, 0)
+            return PreparedContextBuild(
+                context=self.empty(), origins=(), omissions=omissions, fragments=fragments, omitted=omitted
+            )
+        content_bytes = len(content.encode("utf-8"))
+        # The assembly path is bounded by construction (every fitted item is measured against
+        # `max_bytes`), so the ceiling check belongs to the non-assembly renderer only.
+        if request.assembly is None and content_bytes > request.max_bytes:
+            raise PreparedContextInvariantError("output-budget")
+        self._report_budget(request, budget_ledger, content_bytes)
+        return PreparedContextBuild(
+            context=PreparedContext(status="ready", content=content, content_bytes=content_bytes),
+            origins=origins,
+            omissions=omissions,
+            fragments=fragments,
+            omitted=omitted,
+        )
+
+    def probe_budget(
+        self,
+        *,
+        request: PrepareContextRequest,
+        current_scope_id: str | None,
+        memory_candidates: Sequence[PreparedMemoryCandidates] = (),
+        topic_memory_hits: Sequence[TopicMemorySearchHit] = (),
+        experience_candidates: Sequence[PreparedExperienceCandidates] = (),
+        profile_candidates: Sequence[PreparedProfileCandidate] = (),
+    ) -> RecallBudgetView:
+        """Report what the byte budget does to one candidate set, without delivering it.
+
+        This is the RFC 1560 *budget probe*: one pass of this Builder's own pure selection and
+        rendering code, keeping only the counters and discarding the rendered output. It lets
+        the gate tell budget-limited thinness from recall-limited thinness.
+
+        Pure and side-effect free: no I/O, no persistence, nothing reported to any sink, and
+        the same inputs as :meth:`build_scopes_result` are guaranteed to yield the same
+        counters because both go through :meth:`_select_entries`.
+        """
+
+        content, origins, omissions, _, _ = self._select_entries(
+            request=request,
+            current_scope_id=current_scope_id,
+            memory_candidates=memory_candidates,
+            experience_candidates=experience_candidates,
+            profile_candidates=profile_candidates,
+            topic_memory_hits=topic_memory_hits,
+        )
+        content_bytes = 0 if content is None else len(content.encode("utf-8"))
+        return RecallBudgetView(
+            max_bytes=request.max_bytes,
+            delivered_items=len(origins),
+            truncated_items=omissions.truncated_items,
+            dropped_items=omissions.dropped_items,
+            unused_bytes=max(0, request.max_bytes - content_bytes),
+        )
+
+    def _select_entries(
+        self,
+        *,
+        request: PrepareContextRequest,
+        current_scope_id: str | None,
+        memory_candidates: Sequence[PreparedMemoryCandidates],
+        topic_memory_hits: Sequence[TopicMemorySearchHit],
+        experience_candidates: Sequence[PreparedExperienceCandidates],
+        profile_candidates: Sequence[PreparedProfileCandidate],
+        budget_ledger: _BudgetLedger | None = None,
+    ) -> tuple[
+        str | None,
+        tuple[PreparedContextOrigin, ...],
+        PreparedContextOmissions,
+        tuple[PreparedContextFragment, ...],
+        tuple[tuple[str, str, int], ...],
+    ]:
+        """Run one complete pure selection pass and render it.
+
+        Returns ``(content, origins, omissions)``; ``content`` is ``None`` exactly when nothing
+        was selected, which is the empty-result case for both paths. This is the single
+        selection path shared by :meth:`build_scopes_result` and :meth:`probe_budget`, so the
+        probe's counters always describe the selection the build would actually perform.
+
+        ``budget_ledger``, when given, receives one visit per candidate that reaches budget
+        fitting; it never changes the selection.
+        """
+
+        if request.assembly is not None:
+            return self._select_text(
+                request,
+                current_scope_id=current_scope_id,
+                memory_candidates=memory_candidates,
+                experience_candidates=experience_candidates,
+                profile_candidates=profile_candidates,
+                topic_memory_hits=topic_memory_hits,
+                budget_ledger=budget_ledger,
+            )
+
+        counts: Counter[tuple[str, str]] = Counter()
+        count = counts if request.include_receipt else None
+        memory_entries = _interleave_groups(
+            tuple(
+                self._memory_entries(
+                    candidates.hits,
+                    scope_id=None if candidates.scope_id == current_scope_id else candidates.scope_id or None,
+                    omitted=count,
+                )
+                for candidates in memory_candidates
+            )
+        )
+        topic_memory_entries = self._topic_memory_entries(topic_memory_hits, omitted=count)
+        experience_entries_all = _interleave_groups(
+            tuple(
+                self._experience_entries(
+                    candidates.hits,
+                    scope_id=None if candidates.scope_id == current_scope_id else candidates.scope_id or None,
+                    omitted=count,
+                )
+                for candidates in experience_candidates
+            )
+        )
+        experience_entries = experience_entries_all[: self.experience_entry_limit]
+        if count is not None:
+            counts[("experience", "family_limit")] += len(experience_entries_all) - len(experience_entries)
+        entries, omissions = self._fit_entries(
+            request, memory_entries, topic_memory_entries, experience_entries, count, budget_ledger
+        )
+        fragments = (
+            tuple(
+                PreparedContextFragment(entry.origin, entry.kind, _entry_fragment_bytes(entry), entry.truncated)
+                for entry in entries
+            )
+            if count is not None
+            else ()
+        )
+        if not entries:
+            return None, (), omissions, (), _omitted_counts(counts)
+        return _render(entries), tuple(entry.origin for entry in entries), omissions, fragments, _omitted_counts(counts)
+
+    def _select_text(
+        self,
+        request: PrepareContextRequest,
+        *,
+        current_scope_id: str | None,
+        memory_candidates: Sequence[PreparedMemoryCandidates],
+        experience_candidates: Sequence[PreparedExperienceCandidates],
+        profile_candidates: Sequence[PreparedProfileCandidate],
+        topic_memory_hits: Sequence[TopicMemorySearchHit],
+        budget_ledger: _BudgetLedger | None = None,
+    ) -> tuple[
+        str | None,
+        tuple[PreparedContextOrigin, ...],
+        PreparedContextOmissions,
+        tuple[PreparedContextFragment, ...],
+        tuple[tuple[str, str, int], ...],
+    ]:
+        assembly = request.assembly
+        if assembly is None:
+            raise PreparedContextInvariantError("text-assembly-missing")
+        included: list[ContextTextItem] = []
+        origins: list[PreparedContextOrigin] = []
+        fragments: list[PreparedContextFragment] = []
+        counts: Counter[tuple[str, str]] = Counter()
+        count = counts if request.include_receipt else None
+        truncated_items = 0
+        dropped_below_min_bytes = 0
+        dropped_no_fitting_truncation = 0
+        for section in assembly.sections:
+            # Unfilled earlier sections leave their capacity available to later ones.
+            limit = (
+                section.limit
+                if self._text_entry_limit is None
+                else min(section.limit, self._text_entry_limit - len(included))
+            )
+            entries = self._section_entries(
+                section,
+                current_scope_id,
+                memory_candidates,
+                experience_candidates,
+                profile_candidates,
+                topic_memory_hits,
+                count,
+            )
+            seen: set[tuple[str, str, str, int, str | None, str | None]] = set()
+            rank = 0
+            selected_count = 0
+            omission_reason: Literal["entry_limit", "family_limit"] = (
+                "entry_limit" if limit < section.limit else "family_limit"
+            )
+            for index, entry in enumerate(entries):
+                if selected_count >= limit:
+                    self._record_text_limit(count, entry.kind, len(entries) - index, omission_reason)
+                    _note_text_cap(budget_ledger, entries, index, seen, rank, omission_reason)
+                    break
+                item = _text_item(entry)
+                identity = _text_identity(item)
+                skip_reason = _text_skip_reason(identity, seen, item.content)
+                if skip_reason is not None:
+                    _count_text_omission(count, entry.kind, skip_reason)
+                    continue
+                seen.add(identity)
+                rank += 1
+                outcome = fit_context_text_item(included, replace(item, recall_rank=rank), assembly, request.max_bytes)
+                _note_text_fit(budget_ledger, entry, rank, outcome)
+                if outcome.item is None:
+                    dropped_below_min_bytes += int(outcome.dropped_below_min_bytes)
+                    dropped_no_fitting_truncation += int(outcome.dropped_no_fitting_truncation)
+                    if count is not None:
+                        reason = "below_min_bytes" if outcome.dropped_below_min_bytes else "no_fitting_truncation"
+                        counts[(entry.kind, reason)] += 1
+                    continue
+                fitted = outcome.item
+                included.append(fitted)
+                origins.append(entry.origin)
+                if count is not None:
+                    number = 1 + sum(fragment.kind == entry.kind for fragment in fragments)
+                    fragments.append(
+                        PreparedContextFragment(
+                            entry.origin,
+                            entry.kind,
+                            rendered_text_fragment_bytes(fitted, assembly, number),
+                            fitted.truncated,
+                        )
+                    )
+                selected_count += 1
+                truncated_items += int(fitted.truncated)
+        omissions = PreparedContextOmissions(
+            truncated_items=truncated_items,
+            dropped_items=dropped_below_min_bytes + dropped_no_fitting_truncation,
+            dropped_below_min_bytes=dropped_below_min_bytes,
+            dropped_no_fitting_truncation=dropped_no_fitting_truncation,
+        )
+        if not included:
+            return None, (), omissions, (), _omitted_counts(counts)
+        content = render_context_text(included, assembly)
+        return content, tuple(origins), omissions, tuple(fragments), _omitted_counts(counts)
+
+    def _report_budget(self, request: PrepareContextRequest, ledger: _BudgetLedger | None, content_bytes: int) -> None:
+        recorder = self._budget_recorder
+        if recorder is None or ledger is None:
+            return
+        # Budget evidence only observes a finished build, so neither computing it nor the recorder may fail the build.
+        with contextlib.suppress(Exception):
+            recorder(
+                PreparedContextBudgetTrace(
+                    path="default" if request.assembly is None else "assembly",
+                    max_bytes=request.max_bytes,
+                    content_bytes=content_bytes,
+                    records=_budget_records(ledger, request.assembly),
+                )
+            )
+
+    def _record_text_limit(
+        self, omitted: Counter[tuple[str, str]] | None, kind: str, remaining: int, reason: str
+    ) -> None:
+        if omitted is not None:
+            omitted[(kind, reason)] += remaining
+
+    def _section_entries(
+        self,
+        section: ContextAssemblySection,
+        current_scope_id: str | None,
+        memory_candidates: Sequence[PreparedMemoryCandidates],
+        experience_candidates: Sequence[PreparedExperienceCandidates],
+        profile_candidates: Sequence[PreparedProfileCandidate],
+        topic_memory_hits: Sequence[TopicMemorySearchHit],
+        omitted: Counter[tuple[str, str]] | None,
+    ) -> tuple[_PreparedContextEntry, ...]:
+        family = section.family
+        if family not in BUILTIN_CONTEXT_FAMILIES:
+            return self._plugin_entries(section, scope_id=current_scope_id)
+        if family == "profile":
+            return self._profile_entries(profile_candidates, omitted=omitted)
+        if family == "topic-memory":
+            return self._topic_memory_entries(topic_memory_hits, scope_id=current_scope_id, omitted=omitted)
+        groups = (
+            tuple(
+                tuple(self._memory_entries((hit,), scope_id=group.scope_id, omitted=omitted) for hit in group.hits)
+                for group in memory_candidates
+            )
+            if family == "memory"
+            else tuple(
+                tuple(self._experience_entries((hit,), scope_id=group.scope_id, omitted=omitted) for hit in group.hits)
+                for group in experience_candidates
+            )
+        )
+        return tuple(chain.from_iterable(_interleave_groups(groups)))
+
+    def _plugin_entries(
+        self, section: ContextAssemblySection, *, scope_id: str | None
+    ) -> tuple[_PreparedContextEntry, ...]:
+        if scope_id is None:
+            raise PreparedContextInvariantError("plugin-scope-missing")
+        entries = []
+        for hit in section.hits:
+            origin = ArtifactAddress(scope_id=scope_id, artifact=hit.artifact)
+            entries.append(
+                _PreparedContextEntry(
+                    origin=origin,
+                    kind=section.family,
+                    citation={"artifact": origin.model_dump(mode="json")},
+                    content=hit.text,
+                    truncated=False,
+                )
+            )
+        return tuple(entries)
+
+    def _profile_entries(
+        self, candidates: Sequence[PreparedProfileCandidate], *, omitted: Counter[tuple[str, str]] | None = None
+    ) -> tuple[_PreparedContextEntry, ...]:
+        entries = []
+        for candidate in candidates:
+            origin = ArtifactAddress(scope_id=candidate.scope_id, artifact=candidate.profile.as_ref())
+            entries.append(
+                _PreparedContextEntry(
+                    origin=origin,
+                    kind="profile",
+                    citation={"artifact": origin.model_dump(mode="json")},
+                    content=candidate.profile.content.content,
+                    truncated=False,
+                )
+            )
+        return tuple(entries)
+
+    def _memory_entries(
+        self,
+        hits: Sequence[AtomicMemorySearchHit],
+        *,
+        scope_id: str | None = None,
+        omitted: Counter[tuple[str, str]] | None = None,
+    ) -> tuple[_PreparedContextEntry, ...]:
+        entries: list[_PreparedContextEntry] = []
+        seen: set[tuple[str, str, int]] = set()
+        for candidate in hits:
+            hit = candidate.hit
+            ref = hit.artifact_ref
+            if ref.family != "atomic-memory":
+                raise PreparedContextInvariantError("memory-ref-mismatch")
+            identity = (ref.family, ref.artifact_id, ref.revision)
+            if identity in seen or not hit.text.strip():
+                if omitted is not None:
+                    omitted[("atomic-memory", "duplicate" if identity in seen else "blank")] += 1
+                continue
+            seen.add(identity)
+            origin: PreparedContextOrigin = ref
+            citation: dict[str, object] = {"artifact_ref": ref.model_dump(mode="json")}
+            if scope_id is not None:
+                origin = ArtifactAddress(scope_id=scope_id, artifact=ref)
+                citation = {"artifact": origin.model_dump(mode="json")}
+            entries.append(
+                _PreparedContextEntry(
+                    origin=origin,
+                    kind="atomic-memory",
+                    citation=citation,
+                    content=hit.text,
+                    truncated=False,
+                )
+            )
+        return tuple(entries)
+
+    def _topic_memory_entries(
+        self,
+        hits: Sequence[TopicMemorySearchHit],
+        *,
+        scope_id: str | None = None,
+        omitted: Counter[tuple[str, str]] | None = None,
+    ) -> tuple[_PreparedContextEntry, ...]:
+        topic_entries: list[_PreparedContextEntry] = []
+        seen_topics: set[tuple[str, int]] = set()
+        for index, hit in enumerate(hits):
+            if hit.artifact_ref.family != TopicMemory.family:
+                raise PreparedContextInvariantError("topic-memory-family-mismatch")
+            identity = (hit.artifact_ref.artifact_id, hit.artifact_ref.revision)
+            if identity in seen_topics:
+                if omitted is not None:
+                    omitted[("topic-memory", "duplicate")] += 1
+                continue
+            seen_topics.add(identity)
+            if len(topic_entries) >= self.topic_memory_entry_limit:
+                if omitted is not None:
+                    omitted[("topic-memory", "family_limit")] += len(hits) - index
+                break
+            content = {"title": hit.title, "summary": hit.summary}
+            if hit.snippet is not None:
+                content["snippet"] = hit.snippet
+            origin: PreparedContextOrigin = hit.artifact_ref
+            citation = {"artifact_ref": hit.artifact_ref.model_dump(mode="json")}
+            body = json.dumps(content, ensure_ascii=False, separators=(",", ":"))
+            if scope_id is not None:
+                origin = ArtifactAddress(scope_id=scope_id, artifact=hit.artifact_ref)
+                citation = {"artifact": origin.model_dump(mode="json")}
+                body = "\n\n".join(f"{label.capitalize()}: {value}" for label, value in content.items())
+            topic_entries.append(
+                _PreparedContextEntry(
+                    origin=origin,
+                    kind="topic-memory",
+                    citation=citation,
+                    content=body,
+                    truncated=False,
+                )
+            )
+        return tuple(topic_entries)
+
+    def _experience_entries(
+        self,
+        hits: Sequence[ExperienceSearchHit],
+        *,
+        scope_id: str | None = None,
+        omitted: Counter[tuple[str, str]] | None = None,
+    ) -> tuple[_PreparedContextEntry, ...]:
+        experience_entries: list[_PreparedContextEntry] = []
+        seen_experiences: set[tuple[str, int]] = set()
+        for hit in hits:
+            if hit.artifact_ref.family != Experience.family:
+                raise PreparedContextInvariantError("experience-family-mismatch")
+            identity = (hit.artifact_ref.artifact_id, hit.artifact_ref.revision)
+            if identity in seen_experiences:
+                if omitted is not None:
+                    omitted[("experience", "duplicate")] += 1
+                continue
+            seen_experiences.add(identity)
+            origin: PreparedContextOrigin = hit.artifact_ref
+            rendered_citation: dict[str, object] = {"artifact_ref": hit.artifact_ref.model_dump(mode="json")}
+            if scope_id is not None:
+                origin = ArtifactAddress(scope_id=scope_id, artifact=hit.artifact_ref)
+                rendered_citation = {"artifact": origin.model_dump(mode="json")}
+            experience_entries.append(
+                _PreparedContextEntry(
+                    origin=origin,
+                    kind="experience",
+                    citation=rendered_citation,
+                    content=render_experience(hit.content),
+                    truncated=False,
+                )
+            )
+        return tuple(experience_entries)
+
+    def _fit_entries(
+        self,
+        request: PrepareContextRequest,
+        memory_entries: Sequence[_PreparedContextEntry],
+        topic_memory_entries: Sequence[_PreparedContextEntry],
+        experience_entries: Sequence[_PreparedContextEntry],
+        omitted: Counter[tuple[str, str]] | None = None,
+        budget_ledger: _BudgetLedger | None = None,
+    ) -> tuple[tuple[_PreparedContextEntry, ...], PreparedContextOmissions]:
+        entries: list[_PreparedContextEntry] = []
+        truncated_items = 0
+        dropped_below_min_bytes = 0
+        dropped_no_fitting_truncation = 0
+        ordered = _interleave(memory_entries, topic_memory_entries, experience_entries)
+        for index, candidate in enumerate(ordered):
+            if len(entries) >= self.entry_limit:
+                if omitted is not None:
+                    for remaining in ordered[index:]:
+                        omitted[(remaining.kind, "entry_limit")] += 1
+                if budget_ledger is not None:
+                    budget_ledger.extend(
+                        _BudgetVisit(remaining, rank, "entry_limit")
+                        for rank, remaining in enumerate(ordered[index:], start=index + 1)
+                    )
+                break
+            fit = self._fit_entry(
+                entries,
+                origin=candidate.origin,
+                kind=candidate.kind,
+                citation=candidate.citation,
+                text=candidate.content,
+                max_bytes=request.max_bytes,
+            )
+            if budget_ledger is not None:
+                budget_ledger.append(
+                    _BudgetVisit(
+                        candidate, index + 1, _fit_disposition(fit.entry, fit.dropped_below_min_bytes), fit.entry
+                    )
+                )
+            if fit.entry is None:
+                dropped_below_min_bytes += int(fit.dropped_below_min_bytes)
+                dropped_no_fitting_truncation += int(fit.dropped_no_fitting_truncation)
+                if omitted is not None:
+                    reason = "below_min_bytes" if fit.dropped_below_min_bytes else "no_fitting_truncation"
+                    omitted[(candidate.kind, reason)] += 1
+                continue
+            entries.append(fit.entry)
+            if fit.entry.truncated:
+                truncated_items += 1
+        return tuple(entries), PreparedContextOmissions(
+            truncated_items=truncated_items,
+            dropped_items=dropped_below_min_bytes + dropped_no_fitting_truncation,
+            dropped_below_min_bytes=dropped_below_min_bytes,
+            dropped_no_fitting_truncation=dropped_no_fitting_truncation,
+        )
+
+    def _fit_entry(
+        self,
+        entries: Sequence[_PreparedContextEntry],
+        *,
+        origin: PreparedContextOrigin,
+        kind: str,
+        citation: dict[str, object],
+        text: str,
+        max_bytes: int,
+    ) -> _EntryFit:
+        """Fit one entry into the remaining budget, reporting why it was dropped if it was.
+
+        The two ``None`` paths of the original code are kept apart: ``below-min-bytes`` means a
+        shorter rendering exists and fits but is too short to deliver honestly, while
+        ``no-fitting-truncation`` means no shortened rendering fitted at all.
+        """
+
+        source_bytes = len(text.encode("utf-8"))
+        entry_budget = min(source_bytes, self.max_entry_content_bytes)
+        candidate = _PreparedContextEntry(
+            origin=origin,
+            kind=kind,
+            citation=citation,
+            content=text if source_bytes <= entry_budget else _truncate_utf8(text, entry_budget),
+            truncated=source_bytes > entry_budget,
+        )
+        if _rendered_bytes((*entries, candidate)) <= max_bytes:
+            return _EntryFit(entry=candidate)
+        if source_bytes < _MIN_TRUNCATED_CONTENT_BYTES:
+            return _EntryFit(dropped_below_min_bytes=True)
+
+        lower = _MIN_TRUNCATED_CONTENT_BYTES
+        upper = min(entry_budget, source_bytes - 1)
+        best: _PreparedContextEntry | None = None
+        while lower <= upper:
+            byte_budget = (lower + upper) // 2
+            candidate = _PreparedContextEntry(
+                origin=origin,
+                kind=kind,
+                citation=citation,
+                content=_truncate_utf8(text, byte_budget),
+                truncated=True,
+            )
+            if len(candidate.content.encode("utf-8")) < _MIN_TRUNCATED_CONTENT_BYTES:
+                lower = byte_budget + 1
+                continue
+            if _rendered_bytes((*entries, candidate)) <= max_bytes:
+                best = candidate
+                lower = byte_budget + 1
+            else:
+                upper = byte_budget - 1
+        if best is None:
+            return _EntryFit(dropped_no_fitting_truncation=True)
+        return _EntryFit(entry=best)
+
+
+def _interleave(
+    memory: Sequence[_PreparedContextEntry],
+    topics: Sequence[_PreparedContextEntry],
+    experiences: Sequence[_PreparedContextEntry],
+) -> tuple[_PreparedContextEntry, ...]:
+    """Preserve each family's rank while alternating Memory, Topic, Experience."""
+
+    ordered: list[_PreparedContextEntry] = []
+    for index in range(max(len(memory), len(topics), len(experiences))):
+        if index < len(memory):
+            ordered.append(memory[index])
+        if index < len(topics):
+            ordered.append(topics[index])
+        if index < len(experiences):
+            ordered.append(experiences[index])
+    return tuple(ordered)
+
+
+def _omitted_counts(counts: Counter[tuple[str, str]]) -> tuple[tuple[str, str, int], ...]:
+    return tuple((family, reason, total) for (family, reason), total in sorted(counts.items()) if total > 0)
+
+
+def _interleave_groups(groups: Sequence[Sequence[_Item]]) -> tuple[_Item, ...]:
+    ordered: list[_Item] = []
+    for index in range(max((len(group) for group in groups), default=0)):
+        ordered.extend(group[index] for group in groups if index < len(group))
+    return tuple(ordered)
+
+
+def _escape_line_boundaries(encoded: str) -> str:
+    """Keep untrusted text from ending a line of the line-oriented envelope.
+
+    RFC 0028 asks the Builder to prevent Memory newlines and ``BEGIN``/``END`` text from crossing data boundaries,
+    and to deliver ``truncated=false`` content exactly equal to the Memory hit text. Rewriting the body cannot
+    satisfy both, so the escape happens on the encoded envelope instead: every other character stays byte for byte
+    as the Memory holds it, and a parser decodes the line boundaries back to the original code points.
+    """
+
+    return encoded.translate(_LINE_BOUNDARY_ESCAPES)
+
+
+def _render(entries: Sequence[_PreparedContextEntry]) -> str:
+    envelope = {
+        "trust": "untrusted_history",
+        "items": [_render_entry(entry) for entry in entries],
+    }
+    encoded = _escape_line_boundaries(json.dumps(envelope, ensure_ascii=False, separators=(",", ":")))
+    return "\n\n".join((TRUST_POLICY, f"{_BEGIN_MARKER}\n{encoded}\n{_END_MARKER}"))
+
+
+def _text_item(entry: _PreparedContextEntry) -> ContextTextItem:
+    origin = entry.origin
+    if isinstance(origin, ArtifactAddress):
+        return ContextTextItem(artifact=origin, content=entry.content, recall_rank=0)
+    raise PreparedContextInvariantError("text-scope-missing")
+
+
+def _text_identity(item: ContextTextItem) -> tuple[str, str, str, int, str | None, str | None]:
+    artifact = item.artifact
+    return (
+        artifact.scope_id,
+        artifact.artifact.family,
+        artifact.artifact.artifact_id,
+        artifact.artifact.revision,
+        item.entry_id,
+        item.entry_version_id,
+    )
+
+
+def _text_skip_reason(
+    identity: tuple[str, str, str, int, str | None, str | None],
+    seen: set[tuple[str, str, str, int, str | None, str | None]],
+    content: str,
+) -> str | None:
+    if identity in seen:
+        return "duplicate"
+    if not content.strip():
+        return "blank"
+    return None
+
+
+def _count_text_omission(omitted: Counter[tuple[str, str]] | None, kind: str, reason: str) -> None:
+    if omitted is not None:
+        omitted[(kind, reason)] += 1
+
+
+def _render_entry(entry: _PreparedContextEntry) -> dict[str, object]:
+    rendered: dict[str, object] = {
+        "citation": entry.citation,
+        "content": entry.content,
+        "truncated": entry.truncated,
+    }
+    if entry.kind != "memory":
+        rendered["kind"] = entry.kind
+    return rendered
+
+
+def _entry_fragment_bytes(entry: _PreparedContextEntry) -> int:
+    """Measure one rendered envelope item, excluding the separators between items."""
+
+    return len(
+        _escape_line_boundaries(json.dumps(_render_entry(entry), ensure_ascii=False, separators=(",", ":"))).encode(
+            "utf-8"
+        )
+    )
+
+
+def _fit_disposition(
+    delivered: _PreparedContextEntry | ContextTextItem | None, dropped_below_min_bytes: bool
+) -> PreparedContextBudgetDisposition:
+    if delivered is None:
+        return "dropped_below_min_bytes" if dropped_below_min_bytes else "dropped_no_fitting_truncation"
+    return "truncated" if delivered.truncated else "full"
+
+
+def _note_text_fit(ledger: _BudgetLedger | None, entry: _PreparedContextEntry, rank: int, outcome: FitOutcome) -> None:
+    if ledger is not None:
+        disposition = _fit_disposition(outcome.item, outcome.dropped_below_min_bytes)
+        ledger.append(_BudgetVisit(entry, rank, disposition, outcome.item))
+
+
+def _note_text_cap(
+    ledger: _BudgetLedger | None,
+    entries: Sequence[_PreparedContextEntry],
+    index: int,
+    seen: set[tuple[str, str, str, int, str | None, str | None]],
+    rank: int,
+    disposition: Literal["entry_limit", "family_limit"],
+) -> None:
+    if ledger is not None:
+        ledger.append(_BudgetCap(tuple(entries[index:]), frozenset(seen), rank, disposition))
+
+
+def _budget_visits(ledger: _BudgetLedger) -> Iterator[_BudgetVisit]:
+    """Expand the ledger into visits, ranking the unique non-blank candidates left after each section cap."""
+
+    for step in ledger:
+        if isinstance(step, _BudgetVisit):
+            yield step
+            continue
+        seen = set(step.seen)
+        rank = step.rank
+        for entry in step.entries:
+            identity = _remainder_identity(entry)
+            if identity in seen or not entry.content.strip():
+                continue
+            if identity is not None:
+                seen.add(identity)
+            rank += 1
+            yield _BudgetVisit(entry, rank, step.disposition)
+
+
+def _remainder_identity(entry: _PreparedContextEntry) -> tuple[str, str, str, int, str | None, str | None] | None:
+    # Production never itemizes a capped remainder, so an unscoped origin is recorded rather than rejected.
+    if isinstance(entry.origin, ArtifactAddress):
+        return _text_identity(_text_item(entry))
+    return None
+
+
+def _budget_records(ledger: _BudgetLedger, assembly: ContextAssembly | None) -> tuple[PreparedContextBudgetRecord, ...]:
+    records: list[PreparedContextBudgetRecord] = []
+    delivered_per_kind: Counter[str] = Counter()
+    for visit in _budget_visits(ledger):
+        entry, delivered = visit.entry, visit.delivered
+        source_bytes = len(entry.content.encode("utf-8"))
+        delivered_bytes = fragment_bytes = 0
+        if isinstance(delivered, ContextTextItem) and assembly is not None:
+            # Text-assembly fragments are numbered per kind in delivery order, exactly like the Receipt fragments.
+            delivered_per_kind[entry.kind] += 1
+            delivered_bytes = len(delivered.content.encode("utf-8"))
+            fragment_bytes = rendered_text_fragment_bytes(delivered, assembly, delivered_per_kind[entry.kind])
+        elif isinstance(delivered, _PreparedContextEntry):
+            delivered_bytes = len(delivered.content.encode("utf-8"))
+            fragment_bytes = _entry_fragment_bytes(delivered)
+        records.append(
+            PreparedContextBudgetRecord(
+                origin=_budget_origin(entry.origin),
+                kind=entry.kind,
+                rank=visit.rank,
+                disposition=visit.disposition,
+                source_bytes=source_bytes,
+                display_bytes=source_bytes if assembly is None else display_body_bytes(entry.content),
+                delivered_bytes=delivered_bytes,
+                fragment_bytes=fragment_bytes,
+            )
+        )
+    return tuple(records)
+
+
+def _rendered_bytes(entries: Sequence[_PreparedContextEntry]) -> int:
+    return len(_render(entries).encode("utf-8"))
+
+
+def _truncate_utf8(text: str, byte_budget: int) -> str:
+    prefix_budget = byte_budget - len(_ELLIPSIS.encode("utf-8"))
+    encoded_prefix = text.encode("utf-8")[:prefix_budget]
+    return f"{encoded_prefix.decode('utf-8', errors='ignore')}{_ELLIPSIS}"

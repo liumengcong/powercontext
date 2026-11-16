@@ -1,0 +1,314 @@
+// Copyright (c) 2026 OceanBase.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+//! UDS 连接池正确性回归：keep-alive 连接上的连续响应必须逐次正确解析。
+//! 覆盖三个场景：content-length 精确、chunked（含 trailer）、content-length 超读截断。
+
+use pc_gateway_core::{GateClient, UdsGateClient};
+use pc_gateway_types::{CheckDecision, CheckPhase, ContextCheckRequest, ModelJsonPayload};
+use std::collections::BTreeMap;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::net::{UnixListener, UnixStream};
+
+static CONN_COUNT: AtomicUsize = AtomicUsize::new(0);
+
+fn result_json(decision: &str) -> String {
+    let schema = "powercontext.context-check.v1";
+    format!(
+        r#"{{"schema":"{schema}","phase":"before_send","decision":"{decision}","reason_codes":[],"coverage":{{"profile":"text-and-tools.v1","complete":true}},"policy_version":"t","valid_until":"2999-01-01T00:00:00Z","binding":"b1"}}"#
+    )
+}
+
+fn check_request() -> ContextCheckRequest {
+    ContextCheckRequest::BeforeSend {
+        scope_id: "s".into(),
+        target_profile: "p".into(),
+        payload: ModelJsonPayload::new(BTreeMap::new(), "{}".into()),
+        prepared_contexts: Vec::new(),
+    }
+}
+
+/// 读一行请求头直到空行（忽略 body 细节，够用即可）。
+async fn read_request(conn: &mut UnixStream) {
+    let mut buf = Vec::new();
+    let mut byte = [0u8; 1];
+    loop {
+        conn.read_exact(&mut byte).await.unwrap();
+        buf.push(byte[0]);
+        if buf.ends_with(b"\r\n\r\n") {
+            break;
+        }
+    }
+    // 简化：Content-Length 为 0 的探测请求到此结束；带 body 的读掉
+    let head = String::from_utf8_lossy(&buf).to_string();
+    if let Some(len) = head.lines().find_map(|l| {
+        l.strip_prefix("Content-Length: ")
+            .and_then(|v| v.trim().parse::<usize>().ok())
+    }) {
+        let mut body = vec![0u8; len];
+        if len > 0 {
+            conn.read_exact(&mut body).await.unwrap();
+        }
+    }
+}
+
+#[tokio::test]
+async fn pooled_connection_parses_sequential_responses_correctly() {
+    let dir = std::env::temp_dir().join(format!("pc-uds-test-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let sock = dir.join("pool.sock");
+    let _ = std::fs::remove_file(&sock);
+    let listener = UnixListener::bind(&sock).unwrap();
+
+    let server = tokio::spawn(async move {
+        let (mut conn, _) = listener.accept().await.unwrap();
+        CONN_COUNT.fetch_add(1, Ordering::SeqCst);
+
+        // 请求1 → content-length 精确
+        read_request(&mut conn).await;
+        let body = result_json("allow");
+        conn.write_all(
+            format!(
+                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n",
+                body.len()
+            )
+            .as_bytes(),
+        )
+        .await
+        .unwrap();
+        conn.write_all(body.as_bytes()).await.unwrap();
+
+        // 请求2 → chunked（0-chunk + 终止 CRLF，即 trailer 空行）
+        read_request(&mut conn).await;
+        let body2 = result_json("allow");
+        let mut chunked = Vec::new();
+        chunked.extend_from_slice(format!("{:x}\r\n", body2.len()).as_bytes());
+        chunked.extend_from_slice(body2.as_bytes());
+        chunked.extend_from_slice(b"\r\n0\r\n\r\n");
+        conn.write_all(
+            b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nTransfer-Encoding: chunked\r\n\r\n",
+        ).await.unwrap();
+        conn.write_all(&chunked).await.unwrap();
+
+        // 请求3 → content-length 后故意多推 5 个脏字节（应被截断且连接不复用）
+        read_request(&mut conn).await;
+        let body3 = result_json("allow");
+        conn.write_all(
+            format!("HTTP/1.1 200 OK\r\nContent-Length: {}\r\n\r\n", body3.len()).as_bytes(),
+        )
+        .await
+        .unwrap();
+        conn.write_all(body3.as_bytes()).await.unwrap();
+        conn.write_all(b"DIRTY").await.unwrap();
+        // 保持连接打开一会儿，验证客户端没把脏字节当下一响应
+        tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+    });
+
+    let client = UdsGateClient::new(&sock);
+    // 请求1：content-length 精确
+    let r1 = client.check(check_request()).await.unwrap();
+    assert_eq!(r1.decision, CheckDecision::Allow);
+    // 请求2：chunked 应正确解码（而非把 trailer 当下一个响应头）
+    let r2 = client.check(check_request()).await.unwrap();
+    assert_eq!(r2.decision, CheckDecision::Allow);
+    assert_eq!(r2.phase, CheckPhase::BeforeSend, "chunked 解码后字段完整");
+    // 请求3：超读截断——body 应恰好是合法 JSON（脏字节被丢弃）
+    let r3 = client.check(check_request()).await.unwrap();
+    assert_eq!(r3.decision, CheckDecision::Allow);
+
+    server.await.unwrap();
+    // 三次请求只应建立一条连接（第3次后因脏字节弃用，但那是之后的事）
+    assert_eq!(
+        CONN_COUNT.load(Ordering::SeqCst),
+        1,
+        "keep-alive 应复用同一连接"
+    );
+}
+
+/// Cancellation/expiration owns the complete RPC, not individual read idle periods.
+/// An interrupted lease must be dropped so a fresh successful RPC cannot consume old bytes.
+#[tokio::test]
+async fn lifecycle_bounds_dripping_headers_body_and_trailers_and_recovers() {
+    use pc_gateway_core::{LifecycleStopReason, RequestControl};
+    use std::time::Duration;
+    for (index, prefix) in [
+        &b"HTTP/1.1 200 OK\r\nX-Drip: "[..],
+        &b"HTTP/1.1 200 OK\r\nContent-Length: 99999\r\n\r\n"[..],
+        &b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n2\r\n{}\r\n0\r\nX-Drip: "[..],
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        for cancel in [false, true] {
+            let path = std::env::temp_dir().join(format!(
+                "pc-deadline-{}-{index}-{cancel}.sock",
+                std::process::id()
+            ));
+            let _ = std::fs::remove_file(&path);
+            let listener = UnixListener::bind(&path).unwrap();
+            let server = tokio::spawn(async move {
+                let (mut stream, _) = listener.accept().await.unwrap();
+                read_request(&mut stream).await;
+                stream.write_all(prefix).await.unwrap();
+                // Drip until the client drops this lease, then serve a clean new connection.
+                while stream.write_all(b"x").await.is_ok() {
+                    tokio::time::sleep(Duration::from_millis(5)).await;
+                }
+                let (mut stream, _) = listener.accept().await.unwrap();
+                read_request(&mut stream).await;
+                let body = result_json("allow");
+                stream
+                    .write_all(
+                        format!(
+                            "HTTP/1.1 200 OK\r\nContent-Length: {}\r\n\r\n{body}",
+                            body.len()
+                        )
+                        .as_bytes(),
+                    )
+                    .await
+                    .unwrap();
+            });
+            let client = UdsGateClient::with_token(&path, None);
+            let control = RequestControl::new(
+                tokio::time::Instant::now() + Duration::from_millis(100),
+                None,
+            );
+            let lifecycle = control.lifecycle();
+            let cancellation = control.cancellation();
+            let signal = tokio::spawn(async move {
+                if cancel {
+                    tokio::time::sleep(Duration::from_millis(35)).await;
+                    cancellation.cancel();
+                }
+            });
+            let began = tokio::time::Instant::now();
+            assert!(matches!(lifecycle.run(client.check(check_request())).await,
+                Err(reason) if reason == if cancel { LifecycleStopReason::RequestCancelled } else { LifecycleStopReason::DeadlineExceeded }));
+            assert!(began.elapsed() < Duration::from_secs(2));
+            signal.await.unwrap();
+            let recovered =
+                tokio::time::timeout(Duration::from_secs(2), client.check(check_request()))
+                    .await
+                    .unwrap()
+                    .unwrap();
+            assert_eq!(recovered.decision, CheckDecision::Allow);
+            server.await.unwrap();
+            std::fs::remove_file(path).unwrap();
+        }
+    }
+}
+
+#[tokio::test]
+async fn prepare_recovers_after_core_closes_a_pooled_idle_connection() {
+    use pc_gateway_types::PrepareContextRequest;
+    use std::{sync::Arc, time::Duration};
+
+    let dir = std::env::temp_dir().join(format!("pc-prepare-idle-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let socket = dir.join("core.sock");
+    let listener = UnixListener::bind(&socket).unwrap();
+    let accepts = Arc::new(AtomicUsize::new(0));
+    let accepted = accepts.clone();
+    let (close, pooled) = tokio::sync::oneshot::channel();
+    let (closed, disconnected) = tokio::sync::oneshot::channel();
+    let server = tokio::spawn(async move {
+        let (mut connection, _) = listener.accept().await.unwrap();
+        accepted.fetch_add(1, Ordering::SeqCst);
+        read_request(&mut connection).await;
+        connection
+            .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\n{}")
+            .await
+            .unwrap();
+        // Close only after the complete response has returned this lease to the pool.
+        pooled.await.unwrap();
+        drop(connection);
+        closed.send(()).unwrap();
+
+        let (mut connection, _) = listener.accept().await.unwrap();
+        accepted.fetch_add(1, Ordering::SeqCst);
+        read_request(&mut connection).await;
+        let body = r#"{"schema":"powercontext.prepared-context.v1","status":"empty","content":null,"content_bytes":0}"#;
+        connection
+            .write_all(
+                format!(
+                    "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                    body.len()
+                )
+                .as_bytes(),
+            )
+            .await
+            .unwrap();
+    });
+
+    let client = UdsGateClient::with_token(&socket, None);
+    client.capabilities().await.unwrap();
+    close.send(()).unwrap();
+    disconnected.await.unwrap();
+    let prepared = tokio::time::timeout(
+        Duration::from_secs(2),
+        client.prepare(PrepareContextRequest {
+            scope_id: "test".into(),
+            query: "hello".into(),
+            max_bytes: 1024,
+            include_reuse: false,
+            include_code: false,
+            assembly: None,
+        }),
+    )
+    .await
+    .unwrap()
+    .unwrap();
+    assert!(prepared.content().is_none());
+    tokio::time::timeout(Duration::from_secs(2), server)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(accepts.load(Ordering::SeqCst), 2);
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
+#[tokio::test]
+async fn prepare_response_loss_is_not_replayed_after_handoff() {
+    use pc_gateway_types::PrepareContextRequest;
+    let dir = std::env::temp_dir().join(format!("pc-prepare-loss-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let socket = dir.join("core.sock");
+    let _ = std::fs::remove_file(&socket);
+    let listener = UnixListener::bind(&socket).unwrap();
+    let server = tokio::spawn(async move {
+        let (mut connection, _) = listener.accept().await.unwrap();
+        read_request(&mut connection).await;
+        drop(connection);
+        assert!(
+            tokio::time::timeout(std::time::Duration::from_millis(150), listener.accept())
+                .await
+                .is_err(),
+            "prepare must not reconnect after Core received its request"
+        );
+    });
+    let result = UdsGateClient::with_token(&socket, None)
+        .prepare(PrepareContextRequest {
+            scope_id: "test".into(),
+            query: "hello".into(),
+            max_bytes: 1024,
+            include_reuse: false,
+            include_code: false,
+            assembly: None,
+        })
+        .await;
+    assert!(result.is_err());
+    server.await.unwrap();
+    std::fs::remove_dir_all(dir).unwrap();
+}

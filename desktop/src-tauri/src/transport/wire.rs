@@ -1,0 +1,3067 @@
+/*
+ * Copyright (c) 2026 OceanBase.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+// Generated from openapi/powercontext.yaml. Do not edit.
+// rustfmt uses this generated layout verbatim.
+use serde::{Deserialize, Serialize};
+use ts_rs::TS;
+
+#[derive(
+    Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, TS, Default,
+)]
+pub enum AccessAction {
+    #[serde(rename = "server.observe")]
+    #[default]
+    ServerObserve,
+    #[serde(rename = "server.admin")]
+    ServerAdmin,
+    #[serde(rename = "scope.read")]
+    ScopeRead,
+    #[serde(rename = "scope.contribute")]
+    ScopeContribute,
+    #[serde(rename = "scope.review")]
+    ScopeReview,
+    #[serde(rename = "scope.delegate")]
+    ScopeDelegate,
+    #[serde(rename = "scope.admin")]
+    ScopeAdmin,
+    #[serde(rename = "gateway.invoke")]
+    GatewayInvoke,
+    #[serde(rename = "artifact.read")]
+    ArtifactRead,
+    #[serde(rename = "artifact.write")]
+    ArtifactWrite,
+    #[serde(rename = "artifact.share")]
+    ArtifactShare,
+    #[serde(rename = "handoff.evidence.inspect")]
+    HandoffEvidenceInspect,
+    #[serde(rename = "handoff.acknowledge")]
+    HandoffAcknowledge,
+    #[serde(rename = "prompt.use")]
+    PromptUse,
+}
+
+impl std::fmt::Display for AccessAction {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Self::ServerObserve => write!(f, "server.observe"),
+            Self::ServerAdmin => write!(f, "server.admin"),
+            Self::ScopeRead => write!(f, "scope.read"),
+            Self::ScopeContribute => write!(f, "scope.contribute"),
+            Self::ScopeReview => write!(f, "scope.review"),
+            Self::ScopeDelegate => write!(f, "scope.delegate"),
+            Self::ScopeAdmin => write!(f, "scope.admin"),
+            Self::GatewayInvoke => write!(f, "gateway.invoke"),
+            Self::ArtifactRead => write!(f, "artifact.read"),
+            Self::ArtifactWrite => write!(f, "artifact.write"),
+            Self::ArtifactShare => write!(f, "artifact.share"),
+            Self::HandoffEvidenceInspect => write!(f, "handoff.evidence.inspect"),
+            Self::HandoffAcknowledge => write!(f, "handoff.acknowledge"),
+            Self::PromptUse => write!(f, "prompt.use"),
+        }
+    }
+}
+
+#[derive(
+    Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, TS, Default,
+)]
+pub enum AccessControlMode {
+    #[serde(rename = "disabled")]
+    #[default]
+    Disabled,
+    #[serde(rename = "enforced")]
+    Enforced,
+}
+
+impl std::fmt::Display for AccessControlMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Self::Disabled => write!(f, "disabled"),
+            Self::Enforced => write!(f, "enforced"),
+        }
+    }
+}
+
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(deny_unknown_fields)]
+pub struct AccessMeResponse {
+    #[serde(rename = "principal")]
+    pub principal: AccessPrincipal,
+    #[serde(rename = "mode")]
+    pub mode: AccessControlMode,
+    #[serde(rename = "resource_kinds")]
+    pub resource_kinds: Vec<AccessResourceType>,
+    #[serde(rename = "provider_capabilities")]
+    pub provider_capabilities: AccessProviderCapabilities,
+    #[serde(rename = "artifact_families")]
+    pub artifact_families: Vec<ArtifactFamilyAccessCapability>,
+}
+
+impl AccessMeResponse {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        principal: AccessPrincipal,
+        mode: AccessControlMode,
+        resource_kinds: Vec<AccessResourceType>,
+        provider_capabilities: AccessProviderCapabilities,
+        artifact_families: Vec<ArtifactFamilyAccessCapability>,
+    ) -> AccessMeResponse {
+        AccessMeResponse {
+            principal,
+            mode,
+            resource_kinds,
+            provider_capabilities,
+            artifact_families,
+        }
+    }
+}
+
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(deny_unknown_fields)]
+pub struct AccessPrincipal {
+    #[serde(rename = "type")]
+    pub r#type: Type,
+    #[serde(rename = "id")]
+    pub id: String,
+    #[ts(optional)]
+    #[ts(type = "string | null")]
+    #[serde(
+        rename = "description",
+        default,
+        with = "::serde_with::rust::double_option",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub description: Option<Option<String>>,
+}
+
+impl AccessPrincipal {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(r#type: Type, id: String) -> AccessPrincipal {
+        AccessPrincipal {
+            r#type,
+            id,
+            description: None,
+        }
+    }
+}
+#[derive(
+    Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, TS, Default,
+)]
+pub enum Type {
+    #[serde(rename = "user")]
+    #[default]
+    User,
+    #[serde(rename = "service")]
+    Service,
+}
+
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(deny_unknown_fields)]
+pub struct AccessProviderCapabilities {
+    #[serde(rename = "safe_resource_filtering")]
+    pub safe_resource_filtering: bool,
+    #[serde(rename = "multi_requirement_check")]
+    pub multi_requirement_check: bool,
+    #[serde(rename = "relationship_management")]
+    pub relationship_management: bool,
+    #[serde(rename = "group_subjects")]
+    pub group_subjects: bool,
+    #[serde(rename = "multi_principal")]
+    pub multi_principal: bool,
+    #[serde(rename = "max_direct_resource_keys")]
+    pub max_direct_resource_keys: i64,
+}
+
+impl AccessProviderCapabilities {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        safe_resource_filtering: bool,
+        multi_requirement_check: bool,
+        relationship_management: bool,
+        group_subjects: bool,
+        multi_principal: bool,
+        max_direct_resource_keys: i64,
+    ) -> AccessProviderCapabilities {
+        AccessProviderCapabilities {
+            safe_resource_filtering,
+            multi_requirement_check,
+            relationship_management,
+            group_subjects,
+            multi_principal,
+            max_direct_resource_keys,
+        }
+    }
+}
+
+#[derive(
+    Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, TS, Default,
+)]
+pub enum AccessResourceType {
+    #[serde(rename = "server")]
+    #[default]
+    Server,
+    #[serde(rename = "scope")]
+    Scope,
+    #[serde(rename = "artifact")]
+    Artifact,
+}
+
+impl std::fmt::Display for AccessResourceType {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Self::Server => write!(f, "server"),
+            Self::Scope => write!(f, "scope"),
+            Self::Artifact => write!(f, "artifact"),
+        }
+    }
+}
+
+#[derive(
+    Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, TS, Default,
+)]
+pub enum AccessRole {
+    #[serde(rename = "handoff.viewer")]
+    #[default]
+    HandoffViewer,
+    #[serde(rename = "handoff.receiver")]
+    HandoffReceiver,
+    #[serde(rename = "artifact.viewer")]
+    ArtifactViewer,
+    #[serde(rename = "prompt.user")]
+    PromptUser,
+    #[serde(rename = "artifact.owner")]
+    ArtifactOwner,
+    #[serde(rename = "scope.viewer")]
+    ScopeViewer,
+    #[serde(rename = "scope.contributor")]
+    ScopeContributor,
+    #[serde(rename = "scope.reviewer")]
+    ScopeReviewer,
+    #[serde(rename = "scope.delegator")]
+    ScopeDelegator,
+    #[serde(rename = "scope.admin")]
+    ScopeAdmin,
+    #[serde(rename = "gateway.user")]
+    GatewayUser,
+    #[serde(rename = "server.observer")]
+    ServerObserver,
+    #[serde(rename = "server.admin")]
+    ServerAdmin,
+}
+
+impl std::fmt::Display for AccessRole {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Self::HandoffViewer => write!(f, "handoff.viewer"),
+            Self::HandoffReceiver => write!(f, "handoff.receiver"),
+            Self::ArtifactViewer => write!(f, "artifact.viewer"),
+            Self::PromptUser => write!(f, "prompt.user"),
+            Self::ArtifactOwner => write!(f, "artifact.owner"),
+            Self::ScopeViewer => write!(f, "scope.viewer"),
+            Self::ScopeContributor => write!(f, "scope.contributor"),
+            Self::ScopeReviewer => write!(f, "scope.reviewer"),
+            Self::ScopeDelegator => write!(f, "scope.delegator"),
+            Self::ScopeAdmin => write!(f, "scope.admin"),
+            Self::GatewayUser => write!(f, "gateway.user"),
+            Self::ServerObserver => write!(f, "server.observer"),
+            Self::ServerAdmin => write!(f, "server.admin"),
+        }
+    }
+}
+
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(deny_unknown_fields)]
+pub struct AllScopeSelection {
+    #[serde(rename = "mode")]
+    pub mode: AllScopeSelectionMode,
+}
+
+impl AllScopeSelection {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(mode: AllScopeSelectionMode) -> AllScopeSelection {
+        AllScopeSelection { mode }
+    }
+}
+#[derive(
+    Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, TS, Default,
+)]
+pub enum AllScopeSelectionMode {
+    #[serde(rename = "all")]
+    #[default]
+    All,
+}
+
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(deny_unknown_fields)]
+pub struct ArtifactDreamingOperationCapability {
+    #[serde(rename = "operation")]
+    pub operation: DreamOperation,
+    #[serde(rename = "output_kind")]
+    pub output_kind: OutputKind,
+    #[serde(rename = "effect")]
+    pub effect: Effect,
+}
+
+impl ArtifactDreamingOperationCapability {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        operation: DreamOperation,
+        output_kind: OutputKind,
+        effect: Effect,
+    ) -> ArtifactDreamingOperationCapability {
+        ArtifactDreamingOperationCapability {
+            operation,
+            output_kind,
+            effect,
+        }
+    }
+}
+#[derive(
+    Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, TS, Default,
+)]
+pub enum OutputKind {
+    #[serde(rename = "candidate")]
+    #[default]
+    Candidate,
+    #[serde(rename = "tag_candidate")]
+    TagCandidate,
+}
+
+#[derive(
+    Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, TS, Default,
+)]
+pub enum Effect {
+    #[serde(rename = "review_then_publish")]
+    #[default]
+    ReviewThenPublish,
+    #[serde(rename = "review_then_publish_configuration")]
+    ReviewThenPublishConfiguration,
+    #[serde(rename = "review_then_replace_tags")]
+    ReviewThenReplaceTags,
+}
+
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(deny_unknown_fields)]
+pub struct ArtifactFamilyAccessCapability {
+    #[serde(rename = "family")]
+    pub family: String,
+    #[serde(rename = "enabled")]
+    pub enabled: bool,
+    #[serde(rename = "share_unit")]
+    pub share_unit: ShareUnit,
+    #[serde(rename = "actions")]
+    pub actions: Vec<AccessAction>,
+    #[serde(rename = "grantable_roles")]
+    pub grantable_roles: Vec<AccessRole>,
+}
+
+impl ArtifactFamilyAccessCapability {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        family: String,
+        enabled: bool,
+        share_unit: ShareUnit,
+        actions: Vec<AccessAction>,
+        grantable_roles: Vec<AccessRole>,
+    ) -> ArtifactFamilyAccessCapability {
+        ArtifactFamilyAccessCapability {
+            family,
+            enabled,
+            share_unit,
+            actions,
+            grantable_roles,
+        }
+    }
+}
+#[derive(
+    Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, TS, Default,
+)]
+pub enum ShareUnit {
+    #[serde(rename = "artifact")]
+    #[default]
+    Artifact,
+    #[serde(rename = "memory_entry")]
+    MemoryEntry,
+}
+
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(deny_unknown_fields)]
+pub struct ArtifactInventoryStatistics {
+    #[serde(rename = "total")]
+    pub total: i64,
+    #[serde(rename = "by_family")]
+    pub by_family: Vec<FamilyCount>,
+}
+
+impl ArtifactInventoryStatistics {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(total: i64, by_family: Vec<FamilyCount>) -> ArtifactInventoryStatistics {
+        ArtifactInventoryStatistics { total, by_family }
+    }
+}
+
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(deny_unknown_fields)]
+pub struct ArtifactReference {
+    #[serde(rename = "family")]
+    pub family: String,
+    #[serde(rename = "artifact_id")]
+    pub artifact_id: String,
+    #[serde(rename = "revision")]
+    pub revision: i64,
+}
+
+impl ArtifactReference {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(family: String, artifact_id: String, revision: i64) -> ArtifactReference {
+        ArtifactReference {
+            family,
+            artifact_id,
+            revision,
+        }
+    }
+}
+
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(deny_unknown_fields)]
+pub struct ArtifactRevision {
+    #[serde(rename = "scope_id")]
+    pub scope_id: String,
+    #[serde(rename = "family")]
+    pub family: String,
+    #[serde(rename = "artifact_id")]
+    pub artifact_id: String,
+    #[serde(rename = "revision")]
+    pub revision: i64,
+    #[ts(type = "Record<string, unknown>")]
+    #[serde(rename = "content")]
+    pub content: std::collections::HashMap<String, serde_json::Value>,
+    #[serde(rename = "sources")]
+    pub sources: Vec<SourceTypeReference>,
+    #[serde(rename = "artifacts")]
+    pub artifacts: Vec<ArtifactReference>,
+    #[serde(rename = "content_digest")]
+    pub content_digest: String,
+    /// When this revision was committed. Absent for revisions stored before this field existed.
+    #[ts(optional)]
+    #[ts(type = "string | null")]
+    #[serde(
+        rename = "created_at",
+        default,
+        with = "::serde_with::rust::double_option",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub created_at: Option<Option<String>>,
+    /// Principal that committed a rollback. Ordinary revisions omit it.
+    #[ts(optional)]
+    #[ts(type = "AccessPrincipal | null")]
+    #[serde(
+        rename = "created_by",
+        default,
+        with = "::serde_with::rust::double_option",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub created_by: Option<Option<AccessPrincipal>>,
+    /// Historical revision restored by this rollback.
+    #[ts(optional)]
+    #[ts(type = "number | null")]
+    #[serde(
+        rename = "restored_from_revision",
+        default,
+        with = "::serde_with::rust::double_option",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub restored_from_revision: Option<Option<i64>>,
+    /// Reason recorded for a rollback.
+    #[ts(optional)]
+    #[ts(type = "string | null")]
+    #[serde(
+        rename = "reason",
+        default,
+        with = "::serde_with::rust::double_option",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub reason: Option<Option<String>>,
+}
+
+impl ArtifactRevision {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        scope_id: String,
+        family: String,
+        artifact_id: String,
+        revision: i64,
+        content: std::collections::HashMap<String, serde_json::Value>,
+        sources: Vec<SourceTypeReference>,
+        artifacts: Vec<ArtifactReference>,
+        content_digest: String,
+    ) -> ArtifactRevision {
+        ArtifactRevision {
+            scope_id,
+            family,
+            artifact_id,
+            revision,
+            content,
+            sources,
+            artifacts,
+            content_digest,
+            created_at: None,
+            created_by: None,
+            restored_from_revision: None,
+            reason: None,
+        }
+    }
+}
+
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(deny_unknown_fields)]
+pub struct AtomicMemoryRecord {
+    #[serde(rename = "artifact")]
+    pub artifact: ArtifactReference,
+    #[serde(rename = "kind")]
+    pub kind: String,
+    #[serde(rename = "text")]
+    pub text: String,
+    #[serde(rename = "state")]
+    pub state: AtomicMemoryState,
+    #[serde(rename = "state_version")]
+    pub state_version: i64,
+    #[ts(type = "string | null")]
+    #[serde(rename = "merged_into_id", deserialize_with = "Option::deserialize")]
+    pub merged_into_id: Option<String>,
+}
+
+impl AtomicMemoryRecord {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        artifact: ArtifactReference,
+        kind: String,
+        text: String,
+        state: AtomicMemoryState,
+        state_version: i64,
+        merged_into_id: Option<String>,
+    ) -> AtomicMemoryRecord {
+        AtomicMemoryRecord {
+            artifact,
+            kind,
+            text,
+            state,
+            state_version,
+            merged_into_id,
+        }
+    }
+}
+
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(deny_unknown_fields)]
+pub struct AtomicMemorySearchHit {
+    #[serde(rename = "memory")]
+    pub memory: AtomicMemoryRecord,
+    /// Raw RRF score. Hybrid mode applies the deployment's normalized relative FTS/vector weights.
+    #[serde(rename = "score")]
+    pub score: f64,
+    #[serde(rename = "matched_by")]
+    pub matched_by: Vec<MatchedBy>,
+}
+
+impl AtomicMemorySearchHit {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        memory: AtomicMemoryRecord,
+        score: f64,
+        matched_by: Vec<MatchedBy>,
+    ) -> AtomicMemorySearchHit {
+        AtomicMemorySearchHit {
+            memory,
+            score,
+            matched_by,
+        }
+    }
+}
+#[derive(
+    Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, TS, Default,
+)]
+pub enum MatchedBy {
+    #[serde(rename = "text")]
+    #[default]
+    Text,
+    #[serde(rename = "vector")]
+    Vector,
+}
+
+#[derive(
+    Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, TS, Default,
+)]
+pub enum AtomicMemorySearchMode {
+    #[serde(rename = "text")]
+    #[default]
+    Text,
+    #[serde(rename = "vector")]
+    Vector,
+    #[serde(rename = "hybrid")]
+    Hybrid,
+}
+
+impl std::fmt::Display for AtomicMemorySearchMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Self::Text => write!(f, "text"),
+            Self::Vector => write!(f, "vector"),
+            Self::Hybrid => write!(f, "hybrid"),
+        }
+    }
+}
+
+#[derive(
+    Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, TS, Default,
+)]
+pub enum AtomicMemoryState {
+    #[serde(rename = "active")]
+    #[default]
+    Active,
+    #[serde(rename = "forgotten")]
+    Forgotten,
+    #[serde(rename = "merged")]
+    Merged,
+    #[serde(rename = "retired")]
+    Retired,
+}
+
+impl std::fmt::Display for AtomicMemoryState {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Self::Active => write!(f, "active"),
+            Self::Forgotten => write!(f, "forgotten"),
+            Self::Merged => write!(f, "merged"),
+            Self::Retired => write!(f, "retired"),
+        }
+    }
+}
+
+/// BootstrapDeliveryReading : Retained receipt metadata grouped by integration and current state; package content and receipt identities are excluded.
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(deny_unknown_fields)]
+pub struct BootstrapDeliveryReading {
+    #[serde(rename = "integration")]
+    pub integration: String,
+    #[serde(rename = "state")]
+    pub state: BootstrapReceiptState,
+    #[serde(rename = "receipts")]
+    pub receipts: i64,
+    /// Sum of prepared package UTF-8 bytes in this current receipt state, not model tokens or proof of adoption.
+    #[serde(rename = "content_bytes")]
+    pub content_bytes: i64,
+    /// Latest preparation time in this group, not the delivery completion time.
+    #[serde(rename = "last_prepared_at")]
+    pub last_prepared_at: String,
+}
+
+impl BootstrapDeliveryReading {
+    /// Retained receipt metadata grouped by integration and current state; package content and receipt identities are excluded.
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        integration: String,
+        state: BootstrapReceiptState,
+        receipts: i64,
+        content_bytes: i64,
+        last_prepared_at: String,
+    ) -> BootstrapDeliveryReading {
+        BootstrapDeliveryReading {
+            integration,
+            state,
+            receipts,
+            content_bytes,
+            last_prepared_at,
+        }
+    }
+}
+
+/// BootstrapDeliveryStatistics : Current states of retained receipts prepared within the selected UTC period. Injected is host-reported and does not prove model adoption or billing savings. Missing records do not prove no host use.
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(deny_unknown_fields)]
+pub struct BootstrapDeliveryStatistics {
+    #[serde(rename = "period")]
+    pub period: ResolvedUsagePeriod,
+    #[serde(rename = "retention_days")]
+    pub retention_days: i64,
+    #[serde(rename = "actual_adoption")]
+    pub actual_adoption: ActualAdoption,
+    #[serde(rename = "by_integration")]
+    pub by_integration: Vec<BootstrapDeliveryReading>,
+}
+
+impl BootstrapDeliveryStatistics {
+    /// Current states of retained receipts prepared within the selected UTC period. Injected is host-reported and does not prove model adoption or billing savings. Missing records do not prove no host use.
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        period: ResolvedUsagePeriod,
+        retention_days: i64,
+        actual_adoption: ActualAdoption,
+        by_integration: Vec<BootstrapDeliveryReading>,
+    ) -> BootstrapDeliveryStatistics {
+        BootstrapDeliveryStatistics {
+            period,
+            retention_days,
+            actual_adoption,
+            by_integration,
+        }
+    }
+}
+#[derive(
+    Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, TS, Default,
+)]
+pub enum ActualAdoption {
+    #[serde(rename = "unobserved")]
+    #[default]
+    Unobserved,
+}
+
+#[derive(
+    Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, TS, Default,
+)]
+pub enum BootstrapReceiptState {
+    #[serde(rename = "pending")]
+    #[default]
+    Pending,
+    #[serde(rename = "injected")]
+    Injected,
+    #[serde(rename = "skipped")]
+    Skipped,
+    #[serde(rename = "failed")]
+    Failed,
+}
+
+impl std::fmt::Display for BootstrapReceiptState {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Self::Pending => write!(f, "pending"),
+            Self::Injected => write!(f, "injected"),
+            Self::Skipped => write!(f, "skipped"),
+            Self::Failed => write!(f, "failed"),
+        }
+    }
+}
+
+#[derive(
+    Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, TS, Default,
+)]
+pub enum CandidateFamily {
+    #[serde(rename = "experience")]
+    #[default]
+    Experience,
+    #[serde(rename = "skill")]
+    Skill,
+    #[serde(rename = "profile")]
+    Profile,
+    #[serde(rename = "atomic-memory")]
+    AtomicMemory,
+    #[serde(rename = "topic-memory")]
+    TopicMemory,
+    #[serde(rename = "handoff")]
+    Handoff,
+    #[serde(rename = "prompt")]
+    Prompt,
+}
+
+impl std::fmt::Display for CandidateFamily {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Self::Experience => write!(f, "experience"),
+            Self::Skill => write!(f, "skill"),
+            Self::Profile => write!(f, "profile"),
+            Self::AtomicMemory => write!(f, "atomic-memory"),
+            Self::TopicMemory => write!(f, "topic-memory"),
+            Self::Handoff => write!(f, "handoff"),
+            Self::Prompt => write!(f, "prompt"),
+        }
+    }
+}
+
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(deny_unknown_fields)]
+pub struct CandidateFamilyCount {
+    #[serde(rename = "family")]
+    pub family: CandidateFamily,
+    #[serde(rename = "total")]
+    pub total: i64,
+    #[serde(rename = "pending")]
+    pub pending: i64,
+    #[serde(rename = "approved")]
+    pub approved: i64,
+    #[serde(rename = "rejected")]
+    pub rejected: i64,
+}
+
+impl CandidateFamilyCount {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        family: CandidateFamily,
+        total: i64,
+        pending: i64,
+        approved: i64,
+        rejected: i64,
+    ) -> CandidateFamilyCount {
+        CandidateFamilyCount {
+            family,
+            total,
+            pending,
+            approved,
+            rejected,
+        }
+    }
+}
+
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(deny_unknown_fields)]
+pub struct CandidateInventoryStatistics {
+    #[serde(rename = "total")]
+    pub total: i64,
+    #[serde(rename = "pending")]
+    pub pending: i64,
+    #[serde(rename = "approved")]
+    pub approved: i64,
+    #[serde(rename = "rejected")]
+    pub rejected: i64,
+    #[serde(rename = "by_family")]
+    pub by_family: Vec<CandidateFamilyCount>,
+}
+
+impl CandidateInventoryStatistics {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        total: i64,
+        pending: i64,
+        approved: i64,
+        rejected: i64,
+        by_family: Vec<CandidateFamilyCount>,
+    ) -> CandidateInventoryStatistics {
+        CandidateInventoryStatistics {
+            total,
+            pending,
+            approved,
+            rejected,
+            by_family,
+        }
+    }
+}
+
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(deny_unknown_fields)]
+pub struct Capabilities {
+    #[ts(optional)]
+    #[serde(rename = "prompts", skip_serializing_if = "Option::is_none")]
+    pub prompts: Option<std::collections::HashMap<String, PromptCapability>>,
+    /// Whether asynchronous Artifact Dream execution is configured.
+    #[ts(optional)]
+    #[serde(rename = "artifact_dreaming", skip_serializing_if = "Option::is_none")]
+    pub artifact_dreaming: Option<bool>,
+    /// Dream operations enabled by the current Runtime, including their reviewed effect.
+    #[ts(optional)]
+    #[serde(
+        rename = "artifact_dreaming_operations",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub artifact_dreaming_operations: Option<Vec<ArtifactDreamingOperationCapability>>,
+    #[serde(rename = "source_types")]
+    pub source_types: Vec<String>,
+    #[serde(rename = "artifact_families")]
+    pub artifact_families: Vec<String>,
+    /// Whether pending Sources can be extracted into Memory.
+    #[serde(rename = "memory_extraction")]
+    pub memory_extraction: bool,
+    #[ts(optional)]
+    #[serde(rename = "extraction", skip_serializing_if = "Option::is_none")]
+    pub extraction: Option<ExtractionStatus>,
+    /// Whether the configured model can generate reviewed Experience Candidates.
+    #[ts(optional)]
+    #[serde(
+        rename = "experience_generation",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub experience_generation: Option<bool>,
+    /// Whether the configured model can generate reviewed managed Skill Candidates.
+    #[ts(optional)]
+    #[serde(
+        rename = "managed_skill_generation",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub managed_skill_generation: Option<bool>,
+    /// Whether host-local external Skill discovery and exact resolution are configured.
+    #[ts(optional)]
+    #[serde(
+        rename = "external_skill_registry",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub external_skill_registry: Option<bool>,
+    /// Whether exact evidence can be generated into an inspectable Handoff Draft.
+    #[serde(rename = "handoff_generation")]
+    pub handoff_generation: bool,
+    #[serde(rename = "search_modes")]
+    pub search_modes: Vec<MemorySearchMode>,
+    #[serde(rename = "context_versions")]
+    pub context_versions: Vec<PreparedContextSchema>,
+    #[ts(optional)]
+    #[serde(rename = "context_protection", skip_serializing_if = "Option::is_none")]
+    pub context_protection: Option<ContextProtectionCapabilities>,
+}
+
+impl Capabilities {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        source_types: Vec<String>,
+        artifact_families: Vec<String>,
+        memory_extraction: bool,
+        handoff_generation: bool,
+        search_modes: Vec<MemorySearchMode>,
+        context_versions: Vec<PreparedContextSchema>,
+    ) -> Capabilities {
+        Capabilities {
+            prompts: None,
+            artifact_dreaming: None,
+            artifact_dreaming_operations: None,
+            source_types,
+            artifact_families,
+            memory_extraction,
+            extraction: None,
+            experience_generation: None,
+            managed_skill_generation: None,
+            external_skill_registry: None,
+            handoff_generation,
+            search_modes,
+            context_versions,
+            context_protection: None,
+        }
+    }
+}
+
+#[derive(
+    Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, TS, Default,
+)]
+pub enum ConnectionAuthentication {
+    #[serde(rename = "disabled")]
+    #[default]
+    Disabled,
+    #[serde(rename = "authenticated")]
+    Authenticated,
+}
+
+impl std::fmt::Display for ConnectionAuthentication {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Self::Disabled => write!(f, "disabled"),
+            Self::Authenticated => write!(f, "authenticated"),
+        }
+    }
+}
+
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(deny_unknown_fields)]
+pub struct ConnectionIdentity {
+    #[serde(rename = "server_id")]
+    pub server_id: String,
+    #[serde(rename = "authentication")]
+    pub authentication: ConnectionAuthentication,
+    #[serde(rename = "access_mode")]
+    pub access_mode: AccessControlMode,
+    #[ts(type = "AccessPrincipal | null")]
+    #[serde(rename = "principal", deserialize_with = "Option::deserialize")]
+    pub principal: Option<AccessPrincipal>,
+}
+
+impl ConnectionIdentity {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        server_id: String,
+        authentication: ConnectionAuthentication,
+        access_mode: AccessControlMode,
+        principal: Option<AccessPrincipal>,
+    ) -> ConnectionIdentity {
+        ConnectionIdentity {
+            server_id,
+            authentication,
+            access_mode,
+            principal,
+        }
+    }
+}
+
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(deny_unknown_fields)]
+pub struct ContextProtectionCapabilities {
+    #[serde(rename = "check_versions")]
+    pub check_versions: Vec<String>,
+    #[serde(rename = "payload_versions")]
+    pub payload_versions: Vec<String>,
+    #[serde(rename = "reuse_versions")]
+    pub reuse_versions: Vec<String>,
+    #[serde(rename = "reuse_families")]
+    pub reuse_families: Vec<String>,
+    #[serde(rename = "enforcing")]
+    pub enforcing: bool,
+    #[serde(rename = "limits")]
+    pub limits: ContextProtectionCapabilitiesLimits,
+}
+
+impl ContextProtectionCapabilities {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        check_versions: Vec<String>,
+        payload_versions: Vec<String>,
+        reuse_versions: Vec<String>,
+        reuse_families: Vec<String>,
+        enforcing: bool,
+        limits: ContextProtectionCapabilitiesLimits,
+    ) -> ContextProtectionCapabilities {
+        ContextProtectionCapabilities {
+            check_versions,
+            payload_versions,
+            reuse_versions,
+            reuse_families,
+            enforcing,
+            limits,
+        }
+    }
+}
+
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(deny_unknown_fields)]
+pub struct ContextProtectionCapabilitiesLimits {
+    #[serde(rename = "payload_bytes")]
+    pub payload_bytes: i64,
+    #[serde(rename = "binding_bytes")]
+    pub binding_bytes: i64,
+    #[serde(rename = "prepared_contexts")]
+    pub prepared_contexts: i64,
+    #[serde(rename = "dependencies")]
+    pub dependencies: i64,
+    #[serde(rename = "send_seconds")]
+    pub send_seconds: i64,
+    #[serde(rename = "correlate_seconds")]
+    pub correlate_seconds: i64,
+}
+
+impl ContextProtectionCapabilitiesLimits {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        payload_bytes: i64,
+        binding_bytes: i64,
+        prepared_contexts: i64,
+        dependencies: i64,
+        send_seconds: i64,
+        correlate_seconds: i64,
+    ) -> ContextProtectionCapabilitiesLimits {
+        ContextProtectionCapabilitiesLimits {
+            payload_bytes,
+            binding_bytes,
+            prepared_contexts,
+            dependencies,
+            send_seconds,
+            correlate_seconds,
+        }
+    }
+}
+
+/// ContractVersion : A major/minor compatibility version. A major increment may remove or incompatibly change the governed contract. A minor increment only adds backward-compatible behavior or fields.
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, TS)]
+pub struct ContractVersion {
+    #[serde(rename = "major")]
+    pub major: i64,
+    #[serde(rename = "minor")]
+    pub minor: i64,
+}
+
+impl ContractVersion {
+    /// A major/minor compatibility version. A major increment may remove or incompatibly change the governed contract. A minor increment only adds backward-compatible behavior or fields.
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(major: i64, minor: i64) -> ContractVersion {
+        ContractVersion { major, minor }
+    }
+}
+
+#[derive(
+    Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, TS, Default,
+)]
+pub enum DreamOperation {
+    #[serde(rename = "refine_experience")]
+    #[default]
+    RefineExperience,
+    #[serde(rename = "derive_skill")]
+    DeriveSkill,
+    #[serde(rename = "revise_skill")]
+    ReviseSkill,
+    #[serde(rename = "revise_profile")]
+    ReviseProfile,
+    #[serde(rename = "revise_memory")]
+    ReviseMemory,
+    #[serde(rename = "revise_topic_memory")]
+    ReviseTopicMemory,
+    #[serde(rename = "refresh_handoff")]
+    RefreshHandoff,
+    #[serde(rename = "revise_prompt")]
+    RevisePrompt,
+    #[serde(rename = "revise_tags")]
+    ReviseTags,
+}
+
+impl std::fmt::Display for DreamOperation {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Self::RefineExperience => write!(f, "refine_experience"),
+            Self::DeriveSkill => write!(f, "derive_skill"),
+            Self::ReviseSkill => write!(f, "revise_skill"),
+            Self::ReviseProfile => write!(f, "revise_profile"),
+            Self::ReviseMemory => write!(f, "revise_memory"),
+            Self::ReviseTopicMemory => write!(f, "revise_topic_memory"),
+            Self::RefreshHandoff => write!(f, "refresh_handoff"),
+            Self::RevisePrompt => write!(f, "revise_prompt"),
+            Self::ReviseTags => write!(f, "revise_tags"),
+        }
+    }
+}
+
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(deny_unknown_fields)]
+pub struct ExactScopeSelection {
+    #[serde(rename = "mode")]
+    pub mode: ExactScopeSelectionMode,
+    #[serde(rename = "scope_ids")]
+    pub scope_ids: Vec<String>,
+}
+
+impl ExactScopeSelection {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(mode: ExactScopeSelectionMode, scope_ids: Vec<String>) -> ExactScopeSelection {
+        ExactScopeSelection { mode, scope_ids }
+    }
+}
+#[derive(
+    Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, TS, Default,
+)]
+pub enum ExactScopeSelectionMode {
+    #[serde(rename = "exact")]
+    #[default]
+    Exact,
+}
+
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(deny_unknown_fields)]
+pub struct ExtractionBackground {
+    /// Placement of the Memory Supervisor. None means no background executor; synchronous flush may still work.
+    #[serde(rename = "location")]
+    pub location: Location,
+    /// Current local Supervisor leadership role. Standby is normal; null means no running local Supervisor.
+    #[ts(optional)]
+    #[ts(type = "Role | null")]
+    #[serde(
+        rename = "role",
+        default,
+        with = "::serde_with::rust::double_option",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub role: Option<Option<Role>>,
+    /// Local Supervisor lifecycle and control state, independent of individual worker outcomes. A running Supervisor may be retrying failed workers. External state is unknown.
+    #[serde(rename = "state")]
+    pub state: State,
+    /// Whether this process schedules automatic Memory extraction. False still permits explicit flush and recovery of accepted work. Null means the external worker schedule is unknown.
+    #[ts(optional)]
+    #[ts(type = "boolean | null")]
+    #[serde(
+        rename = "automatic_processing_enabled",
+        default,
+        with = "::serde_with::rust::double_option",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub automatic_processing_enabled: Option<Option<bool>>,
+}
+
+impl ExtractionBackground {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(location: Location, state: State) -> ExtractionBackground {
+        ExtractionBackground {
+            location,
+            role: None,
+            state,
+            automatic_processing_enabled: None,
+        }
+    }
+}
+#[derive(
+    Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, TS, Default,
+)]
+pub enum Location {
+    #[serde(rename = "local")]
+    #[default]
+    Local,
+    #[serde(rename = "external")]
+    External,
+    #[serde(rename = "none")]
+    None,
+}
+
+#[derive(
+    Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, TS, Default,
+)]
+pub enum Role {
+    #[serde(rename = "leader")]
+    #[default]
+    Leader,
+    #[serde(rename = "standby")]
+    Standby,
+}
+
+#[derive(
+    Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, TS, Default,
+)]
+pub enum State {
+    #[serde(rename = "running")]
+    #[default]
+    Running,
+    #[serde(rename = "degraded")]
+    Degraded,
+    #[serde(rename = "stopped")]
+    Stopped,
+    #[serde(rename = "unknown")]
+    Unknown,
+}
+
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(deny_unknown_fields)]
+pub struct ExtractionFailure {
+    /// Sanitized category: model_configuration_error, model_timeout, model_unavailable, invalid_model_output, worker_timeout, worker_crash, invalid_worker_result, missing_durable_acknowledgement, supervisor_failed, lease_renewal_failed, scope_discovery_failed, or processing_failed. Raw exception messages, model inputs, and credentials are never returned.
+    #[serde(rename = "code")]
+    pub code: String,
+    /// Inference for recognized model failures; otherwise the boundary where failure was observed. Flush or worker does not identify the failing internal component.
+    #[serde(rename = "stage")]
+    pub stage: Stage,
+    /// UTC time when this process observed the failure.
+    #[serde(rename = "occurred_at")]
+    pub occurred_at: String,
+}
+
+impl ExtractionFailure {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(code: String, stage: Stage, occurred_at: String) -> ExtractionFailure {
+        ExtractionFailure {
+            code,
+            stage,
+            occurred_at,
+        }
+    }
+}
+#[derive(
+    Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, TS, Default,
+)]
+pub enum Stage {
+    #[serde(rename = "inference")]
+    #[default]
+    Inference,
+    #[serde(rename = "flush")]
+    Flush,
+    #[serde(rename = "worker")]
+    Worker,
+    #[serde(rename = "supervisor")]
+    Supervisor,
+    #[serde(rename = "lease_renewal")]
+    LeaseRenewal,
+    #[serde(rename = "scope_discovery")]
+    ScopeDiscovery,
+}
+
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(deny_unknown_fields)]
+pub struct ExtractionObservation {
+    /// Unverified means no execution outcome or control failure has been observed in this window. Observed means at least one success or failure is recorded; neither value is a health verdict.
+    #[serde(rename = "status")]
+    pub status: ExtractionObservationStatus,
+    /// UTC start of this Runtime's observation window. Records cover this process and its child Memory workers, reset on Runtime restart, and do not include remote workers or a durable per-Scope failure history.
+    #[serde(rename = "since")]
+    pub since: String,
+    #[ts(optional)]
+    #[serde(rename = "last_failure", skip_serializing_if = "Option::is_none")]
+    pub last_failure: Option<ExtractionFailure>,
+    /// UTC time of the most recent local successful nonempty synchronous flush or acknowledged Memory worker invocation. This does not prove that a model was called or that any previous failure has recovered.
+    #[ts(optional)]
+    #[ts(type = "string | null")]
+    #[serde(
+        rename = "last_success_at",
+        default,
+        with = "::serde_with::rust::double_option",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub last_success_at: Option<Option<String>>,
+}
+
+impl ExtractionObservation {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(status: ExtractionObservationStatus, since: String) -> ExtractionObservation {
+        ExtractionObservation {
+            status,
+            since,
+            last_failure: None,
+            last_success_at: None,
+        }
+    }
+}
+#[derive(
+    Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, TS, Default,
+)]
+pub enum ExtractionObservationStatus {
+    #[serde(rename = "unverified")]
+    #[default]
+    Unverified,
+    #[serde(rename = "observed")]
+    Observed,
+}
+
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(deny_unknown_fields)]
+pub struct ExtractionStatus {
+    /// Whether a local extraction model or custom pipeline is assembled. Configured does not verify credentials or connectivity. Unknown means execution is external and its configuration is not observed.
+    #[serde(rename = "configuration")]
+    pub configuration: Configuration,
+    #[serde(rename = "background")]
+    pub background: ExtractionBackground,
+    #[serde(rename = "observation")]
+    pub observation: ExtractionObservation,
+}
+
+impl ExtractionStatus {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        configuration: Configuration,
+        background: ExtractionBackground,
+        observation: ExtractionObservation,
+    ) -> ExtractionStatus {
+        ExtractionStatus {
+            configuration,
+            background,
+            observation,
+        }
+    }
+}
+#[derive(
+    Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, TS, Default,
+)]
+pub enum Configuration {
+    #[serde(rename = "configured")]
+    #[default]
+    Configured,
+    #[serde(rename = "unconfigured")]
+    Unconfigured,
+    #[serde(rename = "unknown")]
+    Unknown,
+}
+
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(deny_unknown_fields)]
+pub struct FamilyCount {
+    #[serde(rename = "family")]
+    pub family: String,
+    #[serde(rename = "total")]
+    pub total: i64,
+}
+
+impl FamilyCount {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(family: String, total: i64) -> FamilyCount {
+        FamilyCount { family, total }
+    }
+}
+
+/// FeatureContract : Compatibility version for exactly the listed OpenAPI operation IDs. Adding operations or compatible semantics increments minor; removing, renaming or incompatibly changing a listed operation increments major.
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, TS)]
+pub struct FeatureContract {
+    #[serde(rename = "version")]
+    pub version: ContractVersion,
+    #[serde(rename = "operations")]
+    pub operations: Vec<String>,
+}
+
+impl FeatureContract {
+    /// Compatibility version for exactly the listed OpenAPI operation IDs. Adding operations or compatible semantics increments minor; removing, renaming or incompatibly changing a listed operation increments major.
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(version: ContractVersion, operations: Vec<String>) -> FeatureContract {
+        FeatureContract {
+            version,
+            operations,
+        }
+    }
+}
+
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(deny_unknown_fields)]
+pub struct GetStatsRequest {
+    #[serde(rename = "selection")]
+    pub selection: ScopeSelection,
+    #[ts(optional)]
+    #[serde(rename = "period", skip_serializing_if = "Option::is_none")]
+    pub period: Option<StatsPeriod>,
+    /// Include current processing intent counters and optional local scheduler observations. Does not reconstruct remote worker state or complete history.
+    #[ts(optional)]
+    #[serde(rename = "include_processing", skip_serializing_if = "Option::is_none")]
+    pub include_processing: Option<bool>,
+}
+
+impl GetStatsRequest {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(selection: ScopeSelection) -> GetStatsRequest {
+        GetStatsRequest {
+            selection,
+            period: None,
+            include_processing: None,
+        }
+    }
+}
+
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(deny_unknown_fields)]
+pub struct HealthResponse {
+    #[serde(rename = "status")]
+    pub status: String,
+}
+
+impl HealthResponse {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(status: String) -> HealthResponse {
+        HealthResponse { status }
+    }
+}
+
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(deny_unknown_fields)]
+pub struct InventoryStatistics {
+    #[serde(rename = "sources")]
+    pub sources: SourceInventoryStatistics,
+    #[serde(rename = "artifacts")]
+    pub artifacts: ArtifactInventoryStatistics,
+    #[serde(rename = "candidates")]
+    pub candidates: CandidateInventoryStatistics,
+    #[serde(rename = "memory")]
+    pub memory: MemoryInventoryStatistics,
+}
+
+impl InventoryStatistics {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        sources: SourceInventoryStatistics,
+        artifacts: ArtifactInventoryStatistics,
+        candidates: CandidateInventoryStatistics,
+        memory: MemoryInventoryStatistics,
+    ) -> InventoryStatistics {
+        InventoryStatistics {
+            sources,
+            artifacts,
+            candidates,
+            memory,
+        }
+    }
+}
+
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(deny_unknown_fields)]
+pub struct MemoryEntryInventoryStatistics {
+    #[serde(rename = "total")]
+    pub total: i64,
+    #[serde(rename = "active")]
+    pub active: i64,
+    #[serde(rename = "inactive")]
+    pub inactive: i64,
+    #[serde(rename = "by_kind")]
+    pub by_kind: Vec<MemoryKindCount>,
+}
+
+impl MemoryEntryInventoryStatistics {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        total: i64,
+        active: i64,
+        inactive: i64,
+        by_kind: Vec<MemoryKindCount>,
+    ) -> MemoryEntryInventoryStatistics {
+        MemoryEntryInventoryStatistics {
+            total,
+            active,
+            inactive,
+            by_kind,
+        }
+    }
+}
+
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(deny_unknown_fields)]
+pub struct MemoryInventoryStatistics {
+    #[serde(rename = "entries")]
+    pub entries: MemoryEntryInventoryStatistics,
+}
+
+impl MemoryInventoryStatistics {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(entries: MemoryEntryInventoryStatistics) -> MemoryInventoryStatistics {
+        MemoryInventoryStatistics { entries }
+    }
+}
+
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(deny_unknown_fields)]
+pub struct MemoryKindCount {
+    #[serde(rename = "kind")]
+    pub kind: String,
+    #[serde(rename = "total")]
+    pub total: i64,
+    #[serde(rename = "active")]
+    pub active: i64,
+    #[serde(rename = "inactive")]
+    pub inactive: i64,
+}
+
+impl MemoryKindCount {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(kind: String, total: i64, active: i64, inactive: i64) -> MemoryKindCount {
+        MemoryKindCount {
+            kind,
+            total,
+            active,
+            inactive,
+        }
+    }
+}
+
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(deny_unknown_fields)]
+pub struct MemoryMutationResponse {
+    #[serde(rename = "changed")]
+    pub changed: bool,
+    #[serde(rename = "records")]
+    pub records: Vec<AtomicMemoryRecord>,
+}
+
+impl MemoryMutationResponse {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(changed: bool, records: Vec<AtomicMemoryRecord>) -> MemoryMutationResponse {
+        MemoryMutationResponse { changed, records }
+    }
+}
+
+#[derive(
+    Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, TS, Default,
+)]
+pub enum MemorySearchMode {
+    #[serde(rename = "auto")]
+    #[default]
+    Auto,
+    #[serde(rename = "fts")]
+    Fts,
+    #[serde(rename = "vector")]
+    Vector,
+    #[serde(rename = "hybrid")]
+    Hybrid,
+}
+
+impl std::fmt::Display for MemorySearchMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Self::Auto => write!(f, "auto"),
+            Self::Fts => write!(f, "fts"),
+            Self::Vector => write!(f, "vector"),
+            Self::Hybrid => write!(f, "hybrid"),
+        }
+    }
+}
+
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(deny_unknown_fields)]
+pub struct ModelUsageDay {
+    #[serde(rename = "date")]
+    pub date: String,
+    #[serde(rename = "generation")]
+    pub generation: ModelUsageValue,
+    #[serde(rename = "embedding")]
+    pub embedding: ModelUsageValue,
+    #[serde(rename = "by_purpose")]
+    pub by_purpose: Vec<ModelUsagePurposeBreakdown>,
+}
+
+impl ModelUsageDay {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        date: String,
+        generation: ModelUsageValue,
+        embedding: ModelUsageValue,
+        by_purpose: Vec<ModelUsagePurposeBreakdown>,
+    ) -> ModelUsageDay {
+        ModelUsageDay {
+            date,
+            generation,
+            embedding,
+            by_purpose,
+        }
+    }
+}
+
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(deny_unknown_fields)]
+pub struct ModelUsagePurposeBreakdown {
+    #[serde(rename = "purpose")]
+    pub purpose: String,
+    #[serde(rename = "generation")]
+    pub generation: ModelUsageValue,
+    #[serde(rename = "embedding")]
+    pub embedding: ModelUsageValue,
+}
+
+impl ModelUsagePurposeBreakdown {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        purpose: String,
+        generation: ModelUsageValue,
+        embedding: ModelUsageValue,
+    ) -> ModelUsagePurposeBreakdown {
+        ModelUsagePurposeBreakdown {
+            purpose,
+            generation,
+            embedding,
+        }
+    }
+}
+
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(deny_unknown_fields)]
+pub struct ModelUsageStatistics {
+    #[serde(rename = "generation")]
+    pub generation: ModelUsageValue,
+    #[serde(rename = "embedding")]
+    pub embedding: ModelUsageValue,
+}
+
+impl ModelUsageStatistics {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(generation: ModelUsageValue, embedding: ModelUsageValue) -> ModelUsageStatistics {
+        ModelUsageStatistics {
+            generation,
+            embedding,
+        }
+    }
+}
+
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(deny_unknown_fields)]
+pub struct ModelUsageValue {
+    #[serde(rename = "requests")]
+    pub requests: i64,
+    #[ts(type = "number | null")]
+    #[serde(rename = "input_tokens", deserialize_with = "Option::deserialize")]
+    pub input_tokens: Option<i64>,
+    #[ts(type = "number | null")]
+    #[serde(rename = "output_tokens", deserialize_with = "Option::deserialize")]
+    pub output_tokens: Option<i64>,
+}
+
+impl ModelUsageValue {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        requests: i64,
+        input_tokens: Option<i64>,
+        output_tokens: Option<i64>,
+    ) -> ModelUsageValue {
+        ModelUsageValue {
+            requests,
+            input_tokens,
+            output_tokens,
+        }
+    }
+}
+
+#[derive(
+    Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, TS, Default,
+)]
+pub enum PreparedContextSchema {
+    #[serde(rename = "powercontext.prepared-context.v1")]
+    #[default]
+    PowercontextPreparedContextV1,
+}
+
+impl std::fmt::Display for PreparedContextSchema {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Self::PowercontextPreparedContextV1 => write!(f, "powercontext.prepared-context.v1"),
+        }
+    }
+}
+
+/// ProcessingObservation : Durable invocation counters plus an optional local scheduler sample. Acknowledgement is not artifact creation. Missing local coverage does not imply stopped work.
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(deny_unknown_fields)]
+pub struct ProcessingObservation {
+    #[serde(rename = "binding")]
+    pub binding: String,
+    #[ts(optional)]
+    #[ts(type = "string | null")]
+    #[serde(
+        rename = "family",
+        default,
+        with = "::serde_with::rust::double_option",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub family: Option<Option<String>>,
+    #[serde(rename = "state")]
+    pub state: ProcessingState,
+    #[serde(rename = "observed_at")]
+    pub observed_at: String,
+    #[ts(optional)]
+    #[serde(rename = "scheduler_observed", skip_serializing_if = "Option::is_none")]
+    pub scheduler_observed: Option<bool>,
+    #[ts(optional)]
+    #[serde(rename = "reason", skip_serializing_if = "Option::is_none")]
+    pub reason: Option<ProcessingReason>,
+    #[ts(optional)]
+    #[serde(
+        rename = "requested_generation",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub requested_generation: Option<i64>,
+    #[ts(optional)]
+    #[serde(rename = "handled_generation", skip_serializing_if = "Option::is_none")]
+    pub handled_generation: Option<i64>,
+    #[ts(optional)]
+    #[serde(rename = "dirty_generation", skip_serializing_if = "Option::is_none")]
+    pub dirty_generation: Option<i64>,
+    #[ts(optional)]
+    #[serde(rename = "clean_generation", skip_serializing_if = "Option::is_none")]
+    pub clean_generation: Option<i64>,
+    /// Local lower bound, not the durable age of all pending work.
+    #[ts(optional)]
+    #[ts(type = "string | null")]
+    #[serde(
+        rename = "pending_since",
+        default,
+        with = "::serde_with::rust::double_option",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub pending_since: Option<Option<String>>,
+    #[ts(optional)]
+    #[ts(type = "number | null")]
+    #[serde(
+        rename = "running_seconds",
+        default,
+        with = "::serde_with::rust::double_option",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub running_seconds: Option<Option<f64>>,
+    /// Estimated seconds until a scheduler check, not a promised execution deadline.
+    #[ts(optional)]
+    #[ts(type = "number | null")]
+    #[serde(
+        rename = "next_check_seconds",
+        default,
+        with = "::serde_with::rust::double_option",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub next_check_seconds: Option<Option<f64>>,
+    #[ts(optional)]
+    #[ts(type = "string | null")]
+    #[serde(
+        rename = "worker_id",
+        default,
+        with = "::serde_with::rust::double_option",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub worker_id: Option<Option<String>>,
+    #[ts(optional)]
+    #[ts(type = "number | null")]
+    #[serde(
+        rename = "attempt_generation",
+        default,
+        with = "::serde_with::rust::double_option",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub attempt_generation: Option<Option<i64>>,
+    #[ts(optional)]
+    #[ts(type = "number | null")]
+    #[serde(
+        rename = "retry_failures",
+        default,
+        with = "::serde_with::rust::double_option",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub retry_failures: Option<Option<i64>>,
+    #[ts(optional)]
+    #[ts(type = "string | null")]
+    #[serde(
+        rename = "block_code",
+        default,
+        with = "::serde_with::rust::double_option",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub block_code: Option<Option<String>>,
+    /// Content-free failure category for this Scope and binding's current local retry cycle. Absent before observation or after acknowledgement, restart, or retry-cache eviction. Never an exception message.
+    #[ts(optional)]
+    #[ts(type = "string | null")]
+    #[serde(
+        rename = "last_error_code",
+        default,
+        with = "::serde_with::rust::double_option",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub last_error_code: Option<Option<String>>,
+    /// Owning observation boundary such as authorization, inference, worker, work_admission, or completion. Does not locate an internal domain operation.
+    #[ts(optional)]
+    #[ts(type = "string | null")]
+    #[serde(
+        rename = "last_error_stage",
+        default,
+        with = "::serde_with::rust::double_option",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub last_error_stage: Option<Option<String>>,
+    /// UTC time the local supervisor observed this failure, not the child event time or a durable history.
+    #[ts(optional)]
+    #[ts(type = "string | null")]
+    #[serde(
+        rename = "last_error_at",
+        default,
+        with = "::serde_with::rust::double_option",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub last_error_at: Option<Option<String>>,
+    /// Existing execution identity of the last failed worker in this local retry cycle. Absent for admission failures without a launched worker. Not a metric label.
+    #[ts(optional)]
+    #[ts(type = "string | null")]
+    #[serde(
+        rename = "last_error_worker_id",
+        default,
+        with = "::serde_with::rust::double_option",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub last_error_worker_id: Option<Option<String>>,
+    /// Existing trace identity of the last failed worker when supplied by the tracing adapter. Does not prove sampling or backend storage. Cleared with the local failure observation.
+    #[ts(optional)]
+    #[ts(type = "string | null")]
+    #[serde(
+        rename = "last_error_trace_id",
+        default,
+        with = "::serde_with::rust::double_option",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub last_error_trace_id: Option<Option<String>>,
+}
+
+impl ProcessingObservation {
+    /// Durable invocation counters plus an optional local scheduler sample. Acknowledgement is not artifact creation. Missing local coverage does not imply stopped work.
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        binding: String,
+        state: ProcessingState,
+        observed_at: String,
+    ) -> ProcessingObservation {
+        ProcessingObservation {
+            binding,
+            family: None,
+            state,
+            observed_at,
+            scheduler_observed: None,
+            reason: None,
+            requested_generation: None,
+            handled_generation: None,
+            dirty_generation: None,
+            clean_generation: None,
+            pending_since: None,
+            running_seconds: None,
+            next_check_seconds: None,
+            worker_id: None,
+            attempt_generation: None,
+            retry_failures: None,
+            block_code: None,
+            last_error_code: None,
+            last_error_stage: None,
+            last_error_at: None,
+            last_error_worker_id: None,
+            last_error_trace_id: None,
+        }
+    }
+}
+
+#[derive(
+    Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, TS, Default,
+)]
+pub enum ProcessingReason {
+    #[serde(rename = "unobserved")]
+    #[default]
+    Unobserved,
+    #[serde(rename = "waiting_schedule")]
+    WaitingSchedule,
+    #[serde(rename = "waiting_dispatch")]
+    WaitingDispatch,
+    #[serde(rename = "waiting_capacity")]
+    WaitingCapacity,
+    #[serde(rename = "executing")]
+    Executing,
+    #[serde(rename = "retry_backoff")]
+    RetryBackoff,
+    #[serde(rename = "policy_block")]
+    PolicyBlock,
+    #[serde(rename = "idle")]
+    Idle,
+}
+
+impl std::fmt::Display for ProcessingReason {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Self::Unobserved => write!(f, "unobserved"),
+            Self::WaitingSchedule => write!(f, "waiting_schedule"),
+            Self::WaitingDispatch => write!(f, "waiting_dispatch"),
+            Self::WaitingCapacity => write!(f, "waiting_capacity"),
+            Self::Executing => write!(f, "executing"),
+            Self::RetryBackoff => write!(f, "retry_backoff"),
+            Self::PolicyBlock => write!(f, "policy_block"),
+            Self::Idle => write!(f, "idle"),
+        }
+    }
+}
+
+#[derive(
+    Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, TS, Default,
+)]
+pub enum ProcessingState {
+    #[serde(rename = "idle")]
+    #[default]
+    Idle,
+    #[serde(rename = "dirty")]
+    Dirty,
+    #[serde(rename = "pending")]
+    Pending,
+    #[serde(rename = "acknowledged")]
+    Acknowledged,
+    #[serde(rename = "queued")]
+    Queued,
+    #[serde(rename = "running")]
+    Running,
+    #[serde(rename = "retry_wait")]
+    RetryWait,
+    #[serde(rename = "blocked")]
+    Blocked,
+}
+
+impl std::fmt::Display for ProcessingState {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Self::Idle => write!(f, "idle"),
+            Self::Dirty => write!(f, "dirty"),
+            Self::Pending => write!(f, "pending"),
+            Self::Acknowledged => write!(f, "acknowledged"),
+            Self::Queued => write!(f, "queued"),
+            Self::Running => write!(f, "running"),
+            Self::RetryWait => write!(f, "retry_wait"),
+            Self::Blocked => write!(f, "blocked"),
+        }
+    }
+}
+
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(deny_unknown_fields)]
+pub struct PromptCapability {
+    #[serde(rename = "status")]
+    pub status: PromptCapabilityStatus,
+    #[ts(type = "Reason | null")]
+    #[serde(rename = "reason", deserialize_with = "Option::deserialize")]
+    pub reason: Option<Reason>,
+    #[serde(rename = "definition_version")]
+    pub definition_version: String,
+    #[serde(rename = "builtin_version")]
+    pub builtin_version: String,
+    #[ts(type = "BuiltinProfile | null")]
+    #[serde(rename = "builtin_profile", deserialize_with = "Option::deserialize")]
+    pub builtin_profile: Option<BuiltinProfile>,
+}
+
+impl PromptCapability {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        status: PromptCapabilityStatus,
+        reason: Option<Reason>,
+        definition_version: String,
+        builtin_version: String,
+        builtin_profile: Option<BuiltinProfile>,
+    ) -> PromptCapability {
+        PromptCapability {
+            status,
+            reason,
+            definition_version,
+            builtin_version,
+            builtin_profile,
+        }
+    }
+}
+#[derive(
+    Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, TS, Default,
+)]
+pub enum PromptCapabilityStatus {
+    #[serde(rename = "supported")]
+    #[default]
+    Supported,
+    #[serde(rename = "disabled")]
+    Disabled,
+    #[serde(rename = "unsupported")]
+    Unsupported,
+}
+
+#[derive(
+    Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, TS, Default,
+)]
+pub enum Reason {
+    #[serde(rename = "operation_disabled")]
+    #[default]
+    OperationDisabled,
+    #[serde(rename = "provider_not_configured")]
+    ProviderNotConfigured,
+    #[serde(rename = "injected_component")]
+    InjectedComponent,
+}
+
+#[derive(
+    Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, TS, Default,
+)]
+pub enum BuiltinProfile {
+    #[serde(rename = "coding")]
+    #[default]
+    Coding,
+    #[serde(rename = "conversation")]
+    Conversation,
+}
+
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(deny_unknown_fields)]
+pub struct ReadinessResponse {
+    #[serde(rename = "status")]
+    pub status: ReadinessStatus,
+    #[serde(rename = "checks")]
+    pub checks: std::collections::HashMap<String, String>,
+}
+
+impl ReadinessResponse {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        status: ReadinessStatus,
+        checks: std::collections::HashMap<String, String>,
+    ) -> ReadinessResponse {
+        ReadinessResponse { status, checks }
+    }
+}
+
+#[derive(
+    Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, TS, Default,
+)]
+pub enum ReadinessStatus {
+    #[serde(rename = "ready")]
+    #[default]
+    Ready,
+    #[serde(rename = "degraded")]
+    Degraded,
+    #[serde(rename = "not_ready")]
+    NotReady,
+}
+
+impl std::fmt::Display for ReadinessStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Self::Ready => write!(f, "ready"),
+            Self::Degraded => write!(f, "degraded"),
+            Self::NotReady => write!(f, "not_ready"),
+        }
+    }
+}
+
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(deny_unknown_fields)]
+pub struct RecallTokenDay {
+    #[serde(rename = "date")]
+    pub date: String,
+    #[serde(rename = "preparations")]
+    pub preparations: i64,
+    #[serde(rename = "ready_preparations")]
+    pub ready_preparations: i64,
+    #[serde(rename = "comparable_preparations")]
+    pub comparable_preparations: i64,
+    #[serde(rename = "baseline_tokens")]
+    pub baseline_tokens: i64,
+    #[serde(rename = "recalled_tokens")]
+    pub recalled_tokens: i64,
+    #[serde(rename = "token_reduction")]
+    pub token_reduction: i64,
+}
+
+impl RecallTokenDay {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        date: String,
+        preparations: i64,
+        ready_preparations: i64,
+        comparable_preparations: i64,
+        baseline_tokens: i64,
+        recalled_tokens: i64,
+        token_reduction: i64,
+    ) -> RecallTokenDay {
+        RecallTokenDay {
+            date,
+            preparations,
+            ready_preparations,
+            comparable_preparations,
+            baseline_tokens,
+            recalled_tokens,
+            token_reduction,
+        }
+    }
+}
+
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(deny_unknown_fields)]
+pub struct RecallTokenStatistics {
+    #[serde(rename = "period")]
+    pub period: ResolvedUsagePeriod,
+    #[serde(rename = "estimator")]
+    pub estimator: TokenEstimatorProfile,
+    #[serde(rename = "totals")]
+    pub totals: RecallTokenValue,
+    #[serde(rename = "daily")]
+    pub daily: Vec<RecallTokenDay>,
+}
+
+impl RecallTokenStatistics {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        period: ResolvedUsagePeriod,
+        estimator: TokenEstimatorProfile,
+        totals: RecallTokenValue,
+        daily: Vec<RecallTokenDay>,
+    ) -> RecallTokenStatistics {
+        RecallTokenStatistics {
+            period,
+            estimator,
+            totals,
+            daily,
+        }
+    }
+}
+
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(deny_unknown_fields)]
+pub struct RecallTokenValue {
+    #[serde(rename = "preparations")]
+    pub preparations: i64,
+    #[serde(rename = "ready_preparations")]
+    pub ready_preparations: i64,
+    #[serde(rename = "comparable_preparations")]
+    pub comparable_preparations: i64,
+    #[serde(rename = "baseline_tokens")]
+    pub baseline_tokens: i64,
+    #[serde(rename = "recalled_tokens")]
+    pub recalled_tokens: i64,
+    #[serde(rename = "token_reduction")]
+    pub token_reduction: i64,
+}
+
+impl RecallTokenValue {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        preparations: i64,
+        ready_preparations: i64,
+        comparable_preparations: i64,
+        baseline_tokens: i64,
+        recalled_tokens: i64,
+        token_reduction: i64,
+    ) -> RecallTokenValue {
+        RecallTokenValue {
+            preparations,
+            ready_preparations,
+            comparable_preparations,
+            baseline_tokens,
+            recalled_tokens,
+            token_reduction,
+        }
+    }
+}
+
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(deny_unknown_fields)]
+pub struct RecurrenceStatistics {
+    #[serde(rename = "selected")]
+    pub selected: i64,
+    #[serde(rename = "recurred")]
+    pub recurred: i64,
+    #[serde(rename = "avoided")]
+    pub avoided: i64,
+    #[serde(rename = "unknown")]
+    pub unknown: i64,
+    #[serde(rename = "unlinked_handoff_citations")]
+    pub unlinked_handoff_citations: i64,
+    #[serde(rename = "needing_review")]
+    pub needing_review: i64,
+    #[serde(rename = "top_revisions")]
+    pub top_revisions: Vec<RecurrenceStreak>,
+}
+
+impl RecurrenceStatistics {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        selected: i64,
+        recurred: i64,
+        avoided: i64,
+        unknown: i64,
+        unlinked_handoff_citations: i64,
+        needing_review: i64,
+        top_revisions: Vec<RecurrenceStreak>,
+    ) -> RecurrenceStatistics {
+        RecurrenceStatistics {
+            selected,
+            recurred,
+            avoided,
+            unknown,
+            unlinked_handoff_citations,
+            needing_review,
+            top_revisions,
+        }
+    }
+}
+
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(deny_unknown_fields)]
+pub struct RecurrenceStreak {
+    #[serde(rename = "artifact_ref")]
+    pub artifact_ref: ArtifactReference,
+    #[serde(rename = "signature_key")]
+    pub signature_key: String,
+    #[serde(rename = "terminal_recurred_streak")]
+    pub terminal_recurred_streak: i64,
+}
+
+impl RecurrenceStreak {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        artifact_ref: ArtifactReference,
+        signature_key: String,
+        terminal_recurred_streak: i64,
+    ) -> RecurrenceStreak {
+        RecurrenceStreak {
+            artifact_ref,
+            signature_key,
+            terminal_recurred_streak,
+        }
+    }
+}
+
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(deny_unknown_fields)]
+pub struct RememberMemoryRequest {
+    #[serde(rename = "scope_id")]
+    pub scope_id: String,
+    #[serde(rename = "kind")]
+    pub kind: String,
+    /// Must not exceed 8192 UTF-8 bytes after normalization.
+    #[serde(rename = "text")]
+    pub text: String,
+    #[ts(optional)]
+    #[ts(type = "string | null")]
+    #[serde(
+        rename = "reason",
+        default,
+        with = "::serde_with::rust::double_option",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub reason: Option<Option<String>>,
+    #[ts(optional)]
+    #[ts(type = "number | null")]
+    #[serde(
+        rename = "expected_revision",
+        default,
+        with = "::serde_with::rust::double_option",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub expected_revision: Option<Option<i64>>,
+    /// Optional supplied single-line summary. When omitted, the Server stores a whitespace-collapsed text prefix of at most 200 Unicode characters, including a trailing ellipsis when truncated. Explicit writes do not invoke a generation model.
+    #[ts(optional)]
+    #[ts(type = "string | null")]
+    #[serde(
+        rename = "description",
+        default,
+        with = "::serde_with::rust::double_option",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub description: Option<Option<String>>,
+}
+
+impl RememberMemoryRequest {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(scope_id: String, kind: String, text: String) -> RememberMemoryRequest {
+        RememberMemoryRequest {
+            scope_id,
+            kind,
+            text,
+            reason: None,
+            expected_revision: None,
+            description: None,
+        }
+    }
+}
+
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(deny_unknown_fields)]
+pub struct ResolvedUsagePeriod {
+    #[serde(rename = "preset")]
+    pub preset: StatsPeriod,
+    #[serde(rename = "start_date")]
+    pub start_date: String,
+    #[serde(rename = "end_date")]
+    pub end_date: String,
+    #[serde(rename = "timezone")]
+    pub timezone: Timezone,
+}
+
+impl ResolvedUsagePeriod {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        preset: StatsPeriod,
+        start_date: String,
+        end_date: String,
+        timezone: Timezone,
+    ) -> ResolvedUsagePeriod {
+        ResolvedUsagePeriod {
+            preset,
+            start_date,
+            end_date,
+            timezone,
+        }
+    }
+}
+#[derive(
+    Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, TS, Default,
+)]
+pub enum Timezone {
+    #[serde(rename = "UTC")]
+    #[default]
+    Utc,
+}
+
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(deny_unknown_fields)]
+pub struct ScopeDescriptor {
+    #[serde(rename = "scope_id")]
+    pub scope_id: String,
+    #[serde(rename = "title")]
+    pub title: String,
+    #[serde(rename = "summary")]
+    pub summary: String,
+    #[ts(optional)]
+    #[ts(type = "string | null")]
+    #[serde(
+        rename = "parent_scope_id",
+        default,
+        with = "::serde_with::rust::double_option",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub parent_scope_id: Option<Option<String>>,
+    #[serde(rename = "context_references")]
+    pub context_references: Vec<String>,
+    #[serde(rename = "external_references")]
+    pub external_references: Vec<ScopeExternalReference>,
+    #[serde(rename = "version")]
+    pub version: i64,
+}
+
+impl ScopeDescriptor {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        scope_id: String,
+        title: String,
+        summary: String,
+        context_references: Vec<String>,
+        external_references: Vec<ScopeExternalReference>,
+        version: i64,
+    ) -> ScopeDescriptor {
+        ScopeDescriptor {
+            scope_id,
+            title,
+            summary,
+            parent_scope_id: None,
+            context_references,
+            external_references,
+            version,
+        }
+    }
+}
+
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(deny_unknown_fields)]
+pub struct ScopeExternalReference {
+    #[serde(rename = "kind")]
+    pub kind: String,
+    #[serde(rename = "value")]
+    pub value: String,
+}
+
+impl ScopeExternalReference {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(kind: String, value: String) -> ScopeExternalReference {
+        ScopeExternalReference { kind, value }
+    }
+}
+
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(deny_unknown_fields)]
+pub struct ScopePage {
+    #[serde(rename = "items")]
+    pub items: Vec<ScopeDescriptor>,
+    #[ts(optional)]
+    #[ts(type = "string | null")]
+    #[serde(
+        rename = "next_cursor",
+        default,
+        with = "::serde_with::rust::double_option",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub next_cursor: Option<Option<String>>,
+}
+
+impl ScopePage {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(items: Vec<ScopeDescriptor>) -> ScopePage {
+        ScopePage {
+            items,
+            next_cursor: None,
+        }
+    }
+}
+
+#[derive(
+    Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, TS, Default,
+)]
+pub enum ScopeQueryField {
+    #[serde(rename = "scope_id")]
+    #[default]
+    ScopeId,
+    #[serde(rename = "title")]
+    Title,
+    #[serde(rename = "summary")]
+    Summary,
+    #[serde(rename = "external_reference_value")]
+    ExternalReferenceValue,
+    #[serde(rename = "binding_external_id")]
+    BindingExternalId,
+}
+
+impl std::fmt::Display for ScopeQueryField {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Self::ScopeId => write!(f, "scope_id"),
+            Self::Title => write!(f, "title"),
+            Self::Summary => write!(f, "summary"),
+            Self::ExternalReferenceValue => write!(f, "external_reference_value"),
+            Self::BindingExternalId => write!(f, "binding_external_id"),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(untagged)]
+pub enum ScopeSelection {
+    #[serde(rename = "AllScopeSelection")]
+    AllScopeSelection(AllScopeSelection),
+    #[serde(rename = "ExactScopeSelection")]
+    ExactScopeSelection(ExactScopeSelection),
+    #[serde(rename = "SubtreeScopeSelection")]
+    SubtreeScopeSelection(SubtreeScopeSelection),
+}
+
+impl Default for ScopeSelection {
+    fn default() -> Self {
+        Self::AllScopeSelection(Default::default())
+    }
+}
+
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(deny_unknown_fields)]
+pub struct ScopeStats {
+    #[serde(rename = "scope_id")]
+    pub scope_id: String,
+    #[serde(rename = "inventory")]
+    pub inventory: InventoryStatistics,
+    #[serde(rename = "usage")]
+    pub usage: UsageStatistics,
+    #[serde(rename = "recall")]
+    pub recall: RecallTokenStatistics,
+    #[serde(rename = "recurrence")]
+    pub recurrence: RecurrenceStatistics,
+    /// Current durable bindings and locally observed scheduling state for this Scope; not a complete attempt history.
+    #[ts(optional)]
+    #[serde(rename = "processing", skip_serializing_if = "Option::is_none")]
+    pub processing: Option<Vec<ProcessingObservation>>,
+    #[ts(optional)]
+    #[serde(rename = "bootstrap_delivery", skip_serializing_if = "Option::is_none")]
+    pub bootstrap_delivery: Option<BootstrapDeliveryStatistics>,
+}
+
+impl ScopeStats {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        scope_id: String,
+        inventory: InventoryStatistics,
+        usage: UsageStatistics,
+        recall: RecallTokenStatistics,
+        recurrence: RecurrenceStatistics,
+    ) -> ScopeStats {
+        ScopeStats {
+            scope_id,
+            inventory,
+            usage,
+            recall,
+            recurrence,
+            processing: None,
+            bootstrap_delivery: None,
+        }
+    }
+}
+
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(deny_unknown_fields)]
+pub struct ScopedStats {
+    #[serde(rename = "selection")]
+    pub selection: ScopeSelection,
+    #[serde(rename = "scope_ids")]
+    pub scope_ids: Vec<String>,
+    #[serde(rename = "as_of")]
+    pub as_of: String,
+    #[serde(rename = "inventory")]
+    pub inventory: InventoryStatistics,
+    #[serde(rename = "usage")]
+    pub usage: UsageStatistics,
+    #[serde(rename = "recall")]
+    pub recall: RecallTokenStatistics,
+    #[serde(rename = "by_scope")]
+    pub by_scope: Vec<ScopeStats>,
+}
+
+impl ScopedStats {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        selection: ScopeSelection,
+        scope_ids: Vec<String>,
+        as_of: String,
+        inventory: InventoryStatistics,
+        usage: UsageStatistics,
+        recall: RecallTokenStatistics,
+        by_scope: Vec<ScopeStats>,
+    ) -> ScopedStats {
+        ScopedStats {
+            selection,
+            scope_ids,
+            as_of,
+            inventory,
+            usage,
+            recall,
+            by_scope,
+        }
+    }
+}
+
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(deny_unknown_fields)]
+pub struct SearchMemoryRequest {
+    #[ts(optional)]
+    #[serde(rename = "tag_filter", skip_serializing_if = "Option::is_none")]
+    pub tag_filter: Option<TagFilter>,
+    #[serde(rename = "scope_id")]
+    pub scope_id: String,
+    #[serde(rename = "query")]
+    pub query: String,
+    #[ts(optional)]
+    #[serde(rename = "limit", skip_serializing_if = "Option::is_none")]
+    pub limit: Option<i64>,
+    #[ts(optional)]
+    #[serde(rename = "mode", skip_serializing_if = "Option::is_none")]
+    pub mode: Option<MemorySearchMode>,
+}
+
+impl SearchMemoryRequest {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(scope_id: String, query: String) -> SearchMemoryRequest {
+        SearchMemoryRequest {
+            tag_filter: None,
+            scope_id,
+            query,
+            limit: None,
+            mode: None,
+        }
+    }
+}
+
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(deny_unknown_fields)]
+pub struct SearchMemoryResponse {
+    #[serde(rename = "mode")]
+    pub mode: AtomicMemorySearchMode,
+    #[serde(rename = "hits")]
+    pub hits: Vec<AtomicMemorySearchHit>,
+}
+
+impl SearchMemoryResponse {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        mode: AtomicMemorySearchMode,
+        hits: Vec<AtomicMemorySearchHit>,
+    ) -> SearchMemoryResponse {
+        SearchMemoryResponse { mode, hits }
+    }
+}
+
+/// ServerInfo : Stable deployment identity and protocol compatibility metadata. Compatible clients must ignore unknown optional fields added by a future schema minor version. This contract intentionally excludes runtime capabilities, health, limits, inventory and authorization-principal identity.
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, TS)]
+pub struct ServerInfo {
+    /// Compatibility version for this response shape and field semantics.
+    #[serde(rename = "schema_version")]
+    pub schema_version: ContractVersion,
+    #[serde(rename = "product")]
+    pub product: Product,
+    /// Opaque identity of the durable Server deployment. It is unrelated to Access deployment_id and remains stable across restarts, upgrades, backup restore and replicas sharing the same primary database.
+    #[serde(rename = "server_id")]
+    pub server_id: String,
+    #[serde(rename = "package_version")]
+    pub package_version: String,
+    /// Major/minor projection of the OpenAPI info.version served by this package.
+    #[serde(rename = "api_contract_version")]
+    pub api_contract_version: ContractVersion,
+    /// Stable feature groups keyed by contract name.
+    #[serde(rename = "feature_contracts")]
+    pub feature_contracts: std::collections::HashMap<String, FeatureContract>,
+}
+
+impl ServerInfo {
+    /// Stable deployment identity and protocol compatibility metadata. Compatible clients must ignore unknown optional fields added by a future schema minor version. This contract intentionally excludes runtime capabilities, health, limits, inventory and authorization-principal identity.
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        schema_version: ContractVersion,
+        product: Product,
+        server_id: String,
+        package_version: String,
+        api_contract_version: ContractVersion,
+        feature_contracts: std::collections::HashMap<String, FeatureContract>,
+    ) -> ServerInfo {
+        ServerInfo {
+            schema_version,
+            product,
+            server_id,
+            package_version,
+            api_contract_version,
+            feature_contracts,
+        }
+    }
+}
+#[derive(
+    Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, TS, Default,
+)]
+pub enum Product {
+    #[serde(rename = "powercontext")]
+    #[default]
+    Powercontext,
+}
+
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(deny_unknown_fields)]
+pub struct SourceInventoryStatistics {
+    #[serde(rename = "total")]
+    pub total: i64,
+    #[serde(rename = "memory_processed")]
+    pub memory_processed: i64,
+    #[serde(rename = "memory_pending")]
+    pub memory_pending: i64,
+}
+
+impl SourceInventoryStatistics {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        total: i64,
+        memory_processed: i64,
+        memory_pending: i64,
+    ) -> SourceInventoryStatistics {
+        SourceInventoryStatistics {
+            total,
+            memory_processed,
+            memory_pending,
+        }
+    }
+}
+
+/// SourceLineRangeLocator : Inclusive one-based lines in adapter-supplied text, at most 200 lines. Never a revision redirect.
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(deny_unknown_fields)]
+pub struct SourceLineRangeLocator {
+    #[serde(rename = "kind")]
+    pub kind: SourceLineRangeLocatorKind,
+    #[serde(rename = "start_line")]
+    pub start_line: i64,
+    #[serde(rename = "end_line")]
+    pub end_line: i64,
+    /// Optional adapter-supplied heading path, bounded in Unicode characters rather than UTF-8 bytes.
+    #[ts(optional)]
+    #[ts(type = "string | null")]
+    #[serde(
+        rename = "heading_path",
+        default,
+        with = "::serde_with::rust::double_option",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub heading_path: Option<Option<String>>,
+}
+
+impl SourceLineRangeLocator {
+    /// Inclusive one-based lines in adapter-supplied text, at most 200 lines. Never a revision redirect.
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        kind: SourceLineRangeLocatorKind,
+        start_line: i64,
+        end_line: i64,
+    ) -> SourceLineRangeLocator {
+        SourceLineRangeLocator {
+            kind,
+            start_line,
+            end_line,
+            heading_path: None,
+        }
+    }
+}
+#[derive(
+    Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, TS, Default,
+)]
+pub enum SourceLineRangeLocatorKind {
+    #[serde(rename = "line_range")]
+    #[default]
+    LineRange,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(untagged)]
+pub enum SourceLocator {
+    #[serde(rename = "sequence")]
+    Sequence(SourceSequenceLocator),
+    #[serde(rename = "line_range")]
+    LineRange(SourceLineRangeLocator),
+}
+
+impl Default for SourceLocator {
+    fn default() -> Self {
+        Self::Sequence(Default::default())
+    }
+}
+
+/// SourceSequenceLocator : Position of this exact Source in its scope journal; zero is distinct from absence.
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(deny_unknown_fields)]
+pub struct SourceSequenceLocator {
+    #[serde(rename = "kind")]
+    pub kind: SourceSequenceLocatorKind,
+    #[serde(rename = "sequence")]
+    pub sequence: i64,
+}
+
+impl SourceSequenceLocator {
+    /// Position of this exact Source in its scope journal; zero is distinct from absence.
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(kind: SourceSequenceLocatorKind, sequence: i64) -> SourceSequenceLocator {
+        SourceSequenceLocator { kind, sequence }
+    }
+}
+#[derive(
+    Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, TS, Default,
+)]
+pub enum SourceSequenceLocatorKind {
+    #[serde(rename = "sequence")]
+    #[default]
+    Sequence,
+}
+
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(deny_unknown_fields)]
+pub struct SourceTypeReference {
+    /// Stable Source type, including dynamically registered Source names.
+    #[serde(rename = "source_type")]
+    pub source_type: String,
+    /// Source identity as accepted at ingestion, including Unicode and interior spaces.
+    #[serde(rename = "source_id")]
+    pub source_id: String,
+    #[ts(optional)]
+    #[serde(rename = "locator", skip_serializing_if = "Option::is_none")]
+    pub locator: Option<SourceLocator>,
+}
+
+impl SourceTypeReference {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(source_type: String, source_id: String) -> SourceTypeReference {
+        SourceTypeReference {
+            source_type,
+            source_id,
+            locator: None,
+        }
+    }
+}
+
+#[derive(
+    Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, TS, Default,
+)]
+pub enum StatsPeriod {
+    #[serde(rename = "today")]
+    #[default]
+    Today,
+    #[serde(rename = "7d")]
+    Variant7d,
+    #[serde(rename = "30d")]
+    Variant30d,
+}
+
+impl std::fmt::Display for StatsPeriod {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Self::Today => write!(f, "today"),
+            Self::Variant7d => write!(f, "7d"),
+            Self::Variant30d => write!(f, "30d"),
+        }
+    }
+}
+
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(deny_unknown_fields)]
+pub struct SubtreeScopeSelection {
+    #[serde(rename = "mode")]
+    pub mode: SubtreeScopeSelectionMode,
+    #[serde(rename = "root_scope_id")]
+    pub root_scope_id: String,
+}
+
+impl SubtreeScopeSelection {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(mode: SubtreeScopeSelectionMode, root_scope_id: String) -> SubtreeScopeSelection {
+        SubtreeScopeSelection {
+            mode,
+            root_scope_id,
+        }
+    }
+}
+#[derive(
+    Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, TS, Default,
+)]
+pub enum SubtreeScopeSelectionMode {
+    #[serde(rename = "subtree")]
+    #[default]
+    Subtree,
+}
+
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(deny_unknown_fields)]
+pub struct TagFilter {
+    #[serde(rename = "tags")]
+    pub tags: Vec<String>,
+    #[ts(optional)]
+    #[serde(rename = "match", skip_serializing_if = "Option::is_none")]
+    pub r#match: Option<TagMatch>,
+}
+
+impl TagFilter {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(tags: Vec<String>) -> TagFilter {
+        TagFilter {
+            tags,
+            r#match: None,
+        }
+    }
+}
+
+#[derive(
+    Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, TS, Default,
+)]
+pub enum TagMatch {
+    #[serde(rename = "all")]
+    #[default]
+    All,
+    #[serde(rename = "any")]
+    Any,
+}
+
+impl std::fmt::Display for TagMatch {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Self::All => write!(f, "all"),
+            Self::Any => write!(f, "any"),
+        }
+    }
+}
+
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(deny_unknown_fields)]
+pub struct TokenEstimatorProfile {
+    #[serde(rename = "estimator_id")]
+    pub estimator_id: String,
+    #[serde(rename = "version")]
+    pub version: String,
+}
+
+impl TokenEstimatorProfile {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(estimator_id: String, version: String) -> TokenEstimatorProfile {
+        TokenEstimatorProfile {
+            estimator_id,
+            version,
+        }
+    }
+}
+
+#[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(deny_unknown_fields)]
+pub struct UsageStatistics {
+    #[serde(rename = "period")]
+    pub period: ResolvedUsagePeriod,
+    #[serde(rename = "totals")]
+    pub totals: ModelUsageStatistics,
+    #[serde(rename = "by_purpose")]
+    pub by_purpose: Vec<ModelUsagePurposeBreakdown>,
+    #[serde(rename = "daily")]
+    pub daily: Vec<ModelUsageDay>,
+}
+
+impl UsageStatistics {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        period: ResolvedUsagePeriod,
+        totals: ModelUsageStatistics,
+        by_purpose: Vec<ModelUsagePurposeBreakdown>,
+        daily: Vec<ModelUsageDay>,
+    ) -> UsageStatistics {
+        UsageStatistics {
+            period,
+            totals,
+            by_purpose,
+            daily,
+        }
+    }
+}
+
+#[rustfmt::skip]
+pub fn declarations(config: &ts_rs::Config) -> Vec<String> {
+    vec![
+        <AccessAction as ts_rs::TS>::decl(config),
+        <AccessControlMode as ts_rs::TS>::decl(config),
+        <AccessMeResponse as ts_rs::TS>::decl(config),
+        <AccessPrincipal as ts_rs::TS>::decl(config),
+        <AccessProviderCapabilities as ts_rs::TS>::decl(config),
+        <AccessResourceType as ts_rs::TS>::decl(config),
+        <AccessRole as ts_rs::TS>::decl(config),
+        <ActualAdoption as ts_rs::TS>::decl(config),
+        <AllScopeSelection as ts_rs::TS>::decl(config),
+        <AllScopeSelectionMode as ts_rs::TS>::decl(config),
+        <ArtifactDreamingOperationCapability as ts_rs::TS>::decl(config),
+        <ArtifactFamilyAccessCapability as ts_rs::TS>::decl(config),
+        <ArtifactInventoryStatistics as ts_rs::TS>::decl(config),
+        format!("type ArtifactReadFamily = {};", <String as ts_rs::TS>::name(config)),
+        <ArtifactReference as ts_rs::TS>::decl(config),
+        <ArtifactRevision as ts_rs::TS>::decl(config),
+        <AtomicMemoryRecord as ts_rs::TS>::decl(config),
+        <AtomicMemorySearchHit as ts_rs::TS>::decl(config),
+        <AtomicMemorySearchMode as ts_rs::TS>::decl(config),
+        <AtomicMemoryState as ts_rs::TS>::decl(config),
+        <BootstrapDeliveryReading as ts_rs::TS>::decl(config),
+        <BootstrapDeliveryStatistics as ts_rs::TS>::decl(config),
+        <BootstrapReceiptState as ts_rs::TS>::decl(config),
+        <BuiltinProfile as ts_rs::TS>::decl(config),
+        <CandidateFamily as ts_rs::TS>::decl(config),
+        <CandidateFamilyCount as ts_rs::TS>::decl(config),
+        <CandidateInventoryStatistics as ts_rs::TS>::decl(config),
+        <Capabilities as ts_rs::TS>::decl(config),
+        <Configuration as ts_rs::TS>::decl(config),
+        <ConnectionAuthentication as ts_rs::TS>::decl(config),
+        <ConnectionIdentity as ts_rs::TS>::decl(config),
+        <ContextProtectionCapabilities as ts_rs::TS>::decl(config),
+        <ContextProtectionCapabilitiesLimits as ts_rs::TS>::decl(config),
+        <ContractVersion as ts_rs::TS>::decl(config),
+        <DreamOperation as ts_rs::TS>::decl(config),
+        <Effect as ts_rs::TS>::decl(config),
+        <ExactScopeSelection as ts_rs::TS>::decl(config),
+        <ExactScopeSelectionMode as ts_rs::TS>::decl(config),
+        <ExtractionBackground as ts_rs::TS>::decl(config),
+        <ExtractionFailure as ts_rs::TS>::decl(config),
+        <ExtractionObservation as ts_rs::TS>::decl(config),
+        <ExtractionObservationStatus as ts_rs::TS>::decl(config),
+        <ExtractionStatus as ts_rs::TS>::decl(config),
+        <FamilyCount as ts_rs::TS>::decl(config),
+        <FeatureContract as ts_rs::TS>::decl(config),
+        <GetStatsRequest as ts_rs::TS>::decl(config),
+        <HealthResponse as ts_rs::TS>::decl(config),
+        <InventoryStatistics as ts_rs::TS>::decl(config),
+        <Location as ts_rs::TS>::decl(config),
+        <MatchedBy as ts_rs::TS>::decl(config),
+        <MemoryEntryInventoryStatistics as ts_rs::TS>::decl(config),
+        <MemoryInventoryStatistics as ts_rs::TS>::decl(config),
+        <MemoryKindCount as ts_rs::TS>::decl(config),
+        <MemoryMutationResponse as ts_rs::TS>::decl(config),
+        <MemorySearchMode as ts_rs::TS>::decl(config),
+        <ModelUsageDay as ts_rs::TS>::decl(config),
+        <ModelUsagePurposeBreakdown as ts_rs::TS>::decl(config),
+        <ModelUsageStatistics as ts_rs::TS>::decl(config),
+        <ModelUsageValue as ts_rs::TS>::decl(config),
+        <OutputKind as ts_rs::TS>::decl(config),
+        <PreparedContextSchema as ts_rs::TS>::decl(config),
+        <ProcessingObservation as ts_rs::TS>::decl(config),
+        <ProcessingReason as ts_rs::TS>::decl(config),
+        <ProcessingState as ts_rs::TS>::decl(config),
+        <Product as ts_rs::TS>::decl(config),
+        <PromptCapability as ts_rs::TS>::decl(config),
+        <PromptCapabilityStatus as ts_rs::TS>::decl(config),
+        <ReadinessResponse as ts_rs::TS>::decl(config),
+        <ReadinessStatus as ts_rs::TS>::decl(config),
+        <Reason as ts_rs::TS>::decl(config),
+        <RecallTokenDay as ts_rs::TS>::decl(config),
+        <RecallTokenStatistics as ts_rs::TS>::decl(config),
+        <RecallTokenValue as ts_rs::TS>::decl(config),
+        <RecurrenceStatistics as ts_rs::TS>::decl(config),
+        <RecurrenceStreak as ts_rs::TS>::decl(config),
+        <RememberMemoryRequest as ts_rs::TS>::decl(config),
+        <ResolvedUsagePeriod as ts_rs::TS>::decl(config),
+        <Role as ts_rs::TS>::decl(config),
+        <ScopeDescriptor as ts_rs::TS>::decl(config),
+        <ScopeExternalReference as ts_rs::TS>::decl(config),
+        <ScopePage as ts_rs::TS>::decl(config),
+        <ScopeQueryField as ts_rs::TS>::decl(config),
+        <ScopeSelection as ts_rs::TS>::decl(config),
+        <ScopeStats as ts_rs::TS>::decl(config),
+        <ScopedStats as ts_rs::TS>::decl(config),
+        <SearchMemoryRequest as ts_rs::TS>::decl(config),
+        <SearchMemoryResponse as ts_rs::TS>::decl(config),
+        <ServerInfo as ts_rs::TS>::decl(config),
+        <ShareUnit as ts_rs::TS>::decl(config),
+        <SourceInventoryStatistics as ts_rs::TS>::decl(config),
+        <SourceLineRangeLocator as ts_rs::TS>::decl(config),
+        <SourceLineRangeLocatorKind as ts_rs::TS>::decl(config),
+        <SourceLocator as ts_rs::TS>::decl(config),
+        <SourceSequenceLocator as ts_rs::TS>::decl(config),
+        <SourceSequenceLocatorKind as ts_rs::TS>::decl(config),
+        <SourceTypeReference as ts_rs::TS>::decl(config),
+        <Stage as ts_rs::TS>::decl(config),
+        <State as ts_rs::TS>::decl(config),
+        <StatsPeriod as ts_rs::TS>::decl(config),
+        <SubtreeScopeSelection as ts_rs::TS>::decl(config),
+        <SubtreeScopeSelectionMode as ts_rs::TS>::decl(config),
+        <TagFilter as ts_rs::TS>::decl(config),
+        <TagMatch as ts_rs::TS>::decl(config),
+        <Timezone as ts_rs::TS>::decl(config),
+        <TokenEstimatorProfile as ts_rs::TS>::decl(config),
+        <Type as ts_rs::TS>::decl(config),
+        <UsageStatistics as ts_rs::TS>::decl(config),
+    ]
+}

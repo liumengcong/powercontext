@@ -1,0 +1,367 @@
+# Copyright (c) 2026 OceanBase.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""Bounded, best-effort model usage, owned by one relational runtime."""
+
+from __future__ import annotations
+
+import asyncio
+import logging
+from collections import deque
+from collections.abc import Callable
+from contextlib import suppress
+from contextvars import Context
+from dataclasses import dataclass, replace
+from datetime import date
+
+from sqlalchemy import select
+from sqlalchemy.exc import OperationalError
+
+from powercontext._logging import log_safely
+from powercontext.builtin.inference import InferenceUsage
+from powercontext.builtin.persistence.database import (
+    AsyncDatabase,
+    ModelUsageAttemptExpired,
+    is_transaction_contention,
+)
+from powercontext.builtin.persistence.statistics import StatisticsRepository
+from powercontext.builtin.persistence.tables import SCOPES_TABLE
+from powercontext.builtin.statistics import ModelUsageOperation, ModelUsagePurpose
+
+_LOGGER = logging.getLogger(__name__)
+
+# A contended attempt on SQLite usually returns at once: the transaction begins
+# deferred, and the write upgrade does not consult the busy handler. The budget
+# bounds the retry window, and the backoff interval bounds how many attempts fit
+# inside it; the slice below only caps a single attempt that does wait.
+_WRITE_ATTEMPT_SLICES = 4
+_MIN_WRITE_ATTEMPT_SECONDS = 0.02
+_RETRY_BACKOFF_SECONDS = 0.02
+_WRITE_BATCH_SIZE = 32
+
+
+@dataclass(frozen=True, slots=True)
+class _ModelUsageRecord:
+    scope_id: str
+    usage_date: date
+    purpose: ModelUsagePurpose
+    operation: ModelUsageOperation
+    usage: InferenceUsage
+
+
+def _snapshot(
+    scope_id: str,
+    purpose: ModelUsagePurpose,
+    operation: ModelUsageOperation,
+    usage: InferenceUsage,
+    usage_date: date,
+) -> _ModelUsageRecord:
+    # Preparation estimates are local diagnostics, not part of the persisted usage.
+    counts = usage.model_copy(update={"input_encodings": ()}, deep=True)
+    return _ModelUsageRecord(scope_id, usage_date, purpose, operation, counts)
+
+
+def _coalesce(records: tuple[_ModelUsageRecord, ...]) -> tuple[_ModelUsageRecord, ...]:
+    # Keep each completeness combination separate: merging a known token count
+    # with None into one InferenceUsage would discard the known subtotal. The
+    # repository adds these groups and ANDs their completeness flags atomically.
+    grouped: dict[tuple[str, date, ModelUsagePurpose, ModelUsageOperation, bool, bool], _ModelUsageRecord] = {}
+    for record in records:
+        usage = record.usage
+        key = (
+            record.scope_id,
+            record.usage_date,
+            record.purpose,
+            record.operation,
+            usage.input_tokens is not None,
+            usage.output_tokens is not None,
+        )
+        previous = grouped.get(key)
+        if previous is None:
+            grouped[key] = record
+        else:
+            grouped[key] = replace(
+                record,
+                usage=InferenceUsage(
+                    requests=previous.usage.requests + usage.requests,
+                    input_tokens=None
+                    if usage.input_tokens is None
+                    else (previous.usage.input_tokens or 0) + usage.input_tokens,
+                    output_tokens=None
+                    if usage.output_tokens is None
+                    else (previous.usage.output_tokens or 0) + usage.output_tokens,
+                ),
+            )
+    return tuple(grouped.values())
+
+
+class _ModelUsageRecorder:
+    """Offer without I/O; coalesce bounded writes on one owned consumer.
+
+    Checkpoints identify accepted records, not successful writes. A failed or
+    indeterminate transaction is settled once and is never retried; only a
+    failure that provably applied nothing is repeated inside the same budget.
+    This is deliberately lossy telemetry, not an authoritative billing ledger.
+    """
+
+    def __init__(
+        self,
+        database: AsyncDatabase,
+        repository: StatisticsRepository,
+        *,
+        queue_capacity: int = 256,
+        write_timeout_seconds: float = 1.0,
+        flush_timeout_seconds: float = 0.5,
+        observer: Callable[[int, int, int, int], None] | None = None,
+    ) -> None:
+        if queue_capacity < 1 or write_timeout_seconds <= 0 or flush_timeout_seconds <= 0:
+            raise ValueError("model usage capacity and timeouts must be positive")  # noqa: TRY003
+        self._database = database
+        self._repository = repository
+        self._capacity = queue_capacity
+        self._write_timeout_seconds = write_timeout_seconds
+        self._flush_timeout_seconds = flush_timeout_seconds
+        self._pending: deque[tuple[int, _ModelUsageRecord]] = deque()
+        self._offered = 0
+        self._settled = 0
+        self._ready = asyncio.Event()
+        self._advanced = asyncio.Event()
+        self._consumer: asyncio.Task[None] | None = None
+        self._closed = False
+        self._observer = observer
+        self._dropped = 0
+        self._write_failures = 0
+        self._report()
+
+    def _report(self) -> None:
+        if self._observer is not None:
+            with suppress(Exception):
+                self._observer(len(self._pending), self._capacity, self._dropped, self._write_failures)
+
+    def offer(
+        self,
+        scope_id: str,
+        purpose: ModelUsagePurpose,
+        operation: ModelUsageOperation,
+        usage: InferenceUsage,
+        usage_date: date,
+    ) -> None:
+        """Copy and enqueue a record without awaiting or accessing the database."""
+
+        try:
+            if self._closed:
+                return
+            if usage.requests == 0:
+                return
+            if len(self._pending) >= self._capacity:
+                self._dropped += 1
+                self._report()
+                log_safely(_LOGGER, logging.WARNING, "Model usage queue full; record dropped")
+                return
+            record = _snapshot(scope_id, purpose, operation, usage, usage_date)
+            if self._consumer is None:
+                # Get the loop before constructing the coroutine so a sync caller
+                # outside a loop cannot leave an unawaited coroutine behind.
+                loop = asyncio.get_running_loop()
+                # This is a runtime-owned worker, not a child of the request that
+                # happened to submit its first record. A clean context prevents
+                # request cancellation scopes and request-local state from leaking
+                # into the consumer and cancelling an in-flight database cleanup.
+                self._consumer = loop.create_task(
+                    self._consume(),
+                    name="powercontext-model-usage",
+                    context=Context(),
+                )
+                self._consumer.add_done_callback(self._consumer_finished)
+            self._offered += 1
+            self._pending.append((self._offered, record))
+            self._ready.set()
+            self._report()
+        except Exception:
+            self._dropped += 1
+            self._report()
+            # Never log usage payloads, identifiers, SQL or driver error text.
+            log_safely(_LOGGER, logging.WARNING, "Model usage record could not be queued")
+
+    def checkpoint(self) -> int:
+        return self._offered
+
+    async def flush(self, through: int | None = None) -> None:
+        """Wait only for the entry prefix, without cancelling its consumer."""
+
+        target = self.checkpoint() if through is None else min(through, self.checkpoint())
+        if self._consumer is None or self._settled >= target:
+            return
+        try:
+            async with asyncio.timeout(self._flush_timeout_seconds):
+                while self._settled < target:
+                    await self._advanced.wait()
+        except TimeoutError:
+            log_safely(_LOGGER, logging.WARNING, "Model usage flush timed out; continuing without statistics")
+
+    async def close(self) -> None:
+        """Stop offers, then drain every accepted record within a bounded budget."""
+
+        self._closed = True
+        consumer = self._consumer
+        if consumer is None:
+            return
+        self._ready.set()
+        # Each batch already carries a bounded write budget, so waiting
+        # one batch plus one flush window lets an in-flight write finish instead
+        # of abandoning it to a database that is about to close underneath it.
+        budget = self._write_timeout_seconds + self._flush_timeout_seconds
+        try:
+            async with asyncio.timeout(budget):
+                while self._settled < self._offered:
+                    await self._advanced.wait()
+        except TimeoutError:
+            log_safely(_LOGGER, logging.WARNING, "Model usage shutdown dropped queued records")
+        finally:
+            self._dropped += len(self._pending)
+            self._pending.clear()
+            self._report()
+            self._ready.set()
+        # No task cancellation is sent into SQLite. Its native deadline stops VM
+        # work; cleanup is still owned by the consumer if the OS itself stalls.
+        _, pending = await asyncio.wait((consumer,), timeout=self._write_timeout_seconds)
+        if pending:
+            log_safely(_LOGGER, logging.WARNING, "Model usage native cleanup still pending at shutdown")
+
+    async def _consume(self) -> None:
+        try:
+            while True:
+                if not self._pending:
+                    if self._closed:
+                        return
+                    self._ready.clear()
+                    await self._ready.wait()
+                    continue
+                batch = tuple(self._pending.popleft() for _ in range(min(len(self._pending), _WRITE_BATCH_SIZE)))
+                sequence = batch[-1][0]
+                self._report()
+                try:
+                    # These records are already accepted, so they must survive whoever
+                    # cancels this consumer: nothing else will ever retry it, and
+                    # `_settle` reports it as settled either way.
+                    await asyncio.shield(self._write(tuple(record for _, record in batch)))
+                except Exception:
+                    # Count original records, not coalesced groups or physical
+                    # transactions, so batching does not conceal usage losses.
+                    self._write_failures += len(batch)
+                    self._report()
+                    log_safely(_LOGGER, logging.WARNING, "Model usage write failed; record will not be retried")
+                finally:
+                    self._settle(sequence)
+        finally:
+            self._closed = True
+            self._dropped += len(self._pending)
+            self._pending.clear()
+            self._report()
+            self._settle(self._offered)
+
+    async def _write(self, records: tuple[_ModelUsageRecord, ...]) -> None:
+        """Write one batch, retrying only a failure that rolled back cleanly.
+
+        A busy or conflict error leaves nothing applied, so repeating it cannot
+        double count and is worth the rest of this batch's budget. An attempt
+        that expired before its body committed is the same shape and is worth the
+        same: a slow body must be allowed to finish rather than take the batch's
+        usage with it. Any other failure may have committed with an unknown
+        outcome and is never retried.
+        """
+
+        grouped = _coalesce(records)
+        scopes = sorted({record.scope_id for record in grouped})
+        loop = asyncio.get_running_loop()
+        deadline = loop.time() + self._write_timeout_seconds
+        # SQLite can prove that an expired body rolled back, so its first attempt
+        # gets a slice that leaves time for a repeat. Contended attempts normally
+        # return immediately, so backoff determines how many fit in the budget.
+        # MySQL's deadline closes the socket and may lose a COMMIT reply. That
+        # timeout cannot be retried, so give the batch its full configured budget.
+        attempt_timeout = (
+            self._write_timeout_seconds
+            if self._database.engine.dialect.name == "mysql"
+            else max(self._write_timeout_seconds / _WRITE_ATTEMPT_SLICES, _MIN_WRITE_ATTEMPT_SECONDS)
+        )
+        # Every repeat gets what the batch has left. Repeating is only reached
+        # after a provably unapplied attempt. On SQLite, that expiry is the
+        # evidence that a slice is not what this batch needs: handing the repeat
+        # the same slice reaches the same wall and drops a batch that still owns
+        # most of its budget. The budget, not the slice, is what bounds the total.
+        # On SQLite a retry after an interrupted body can hold the shared
+        # connection guard for the batch's entire remaining budget, delaying a
+        # competing business write by up to the full write_timeout_seconds
+        # (at most 30 seconds) plus transaction settlement/cleanup. The guard is
+        # released between attempts; the first-attempt slice is not a retry cap.
+        first_attempt = True
+        while True:
+            remaining = deadline - loop.time()
+            if remaining <= 0:
+                raise TimeoutError
+            allowance = attempt_timeout if first_attempt else remaining
+            try:
+                async with self._database.statistics_transaction(min(remaining, allowance)) as connection:
+                    # Lock Scope rows in a stable order so delete cannot race the
+                    # increment. SQLite ignores FOR UPDATE; its real snapshot
+                    # makes a competing delete fail the write upgrade instead.
+                    scope = (
+                        select(SCOPES_TABLE.c.scope_id)
+                        .where(SCOPES_TABLE.c.scope_id.in_(scopes))
+                        .order_by(SCOPES_TABLE.c.scope_id)
+                        .with_for_update()
+                    )
+                    existing = set((await connection.execute(scope)).scalars())
+                    for record in grouped:
+                        if record.scope_id not in existing:
+                            continue
+                        await self._repository.record(
+                            connection,
+                            record.scope_id,
+                            record.usage_date,
+                            record.purpose,
+                            record.operation,
+                            record.usage,
+                        )
+            except OperationalError as error:
+                if not is_transaction_contention(error):
+                    raise
+                # Let the competing writer finish before taking the rest.
+                first_attempt = False
+                await asyncio.sleep(min(_RETRY_BACKOFF_SECONDS, max(remaining, 0)))
+            except ModelUsageAttemptExpired:
+                if self._closed:
+                    # Shutdown is already draining: it dropped the backlog and
+                    # waits one write window for this consumer, so a repeat
+                    # cannot be counted on, and failing now ends it as expected.
+                    raise
+                # Unapplied and still inside the batch's own budget, so hand the
+                # loop over rather than let a slow machine decide its fate, and
+                # stop slicing: this attempt is the evidence that the body, not a
+                # wait, is what takes the time.
+                first_attempt = False
+                await asyncio.sleep(min(_RETRY_BACKOFF_SECONDS, max(remaining, 0)))
+            else:
+                return
+
+    def _settle(self, sequence: int) -> None:
+        self._settled = sequence
+        self._advanced.set()
+        self._advanced = asyncio.Event()
+
+    @staticmethod
+    def _consumer_finished(consumer: asyncio.Task[None]) -> None:
+        if not consumer.cancelled() and consumer.exception() is not None:
+            log_safely(_LOGGER, logging.WARNING, "Model usage consumer stopped unexpectedly")

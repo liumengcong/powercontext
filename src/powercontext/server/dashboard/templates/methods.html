@@ -1,0 +1,33 @@
+<!--
+Copyright (c) 2026 OceanBase.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+
+{% from 'components/page-heading.html' import page_heading %}
+{% from 'components/pagination.html' import pagination %}
+{% from 'components/search.html' import search_form with context %}
+{% set family = method_kind %}{% set collection = collections.get(family,{}) %}
+{% call page_heading(t.methods, t.methods_subtitle) %}{% if not generation_open %}<div class="btn-list justify-content-md-end"><a class="btn btn-primary" href="{{ link(generate='1',generation_mode='direct',evidence_type=none,generation_cursor=none,generation_history=none,generation_result=none) }}" title="{{ t.method_sync_notice }}">{{ t.method_generate_now }}</a><a class="btn btn-primary" href="{{ link(generate='1',generation_mode='dream',evidence_type=none,generation_cursor=none,generation_history=none,generation_result=none) }}">{{ t.method_generate_dream }}</a></div>{% endif %}{% endcall %}
+<nav class="nav nav-tabs mb-4" aria-label="{{ t.method_filter }}">{% for value,label in [('experience','experience'),('skill','skill_reading')] %}<a class="nav-link {{ 'active' if family == value else '' }}" href="{{ link('methods',kind=value,q=none,skill_page=none,experience_page=none,experience_cursor=none,experience_history=none,generate=none,generation_mode=none,evidence_type=none,generation_cursor=none,generation_history=none,generation_result=none) }}" {% if family == value %}aria-current="page"{% endif %}>{{ t[label] }}</a>{% endfor %}</nav>
+{% if generation_open %}{% include 'components/method-generation.html' %}{% else %}
+{% if request.query_params.get('generation_result') == 'no_op' %}<p class="alert alert-info" role="status">{{ t.method_generation_no_op }}</p>{% endif %}
+{{ search_form(t.search_experiences if family == 'experience' else t.search_skills,2000,family) }}
+{% if collection.get('search_limited') %}<p class="text-secondary">{{ t.experiences_limit if family == 'experience' else t.skills_limit }}</p>{% endif %}
+{% if errors.get(family) %}{{ read_error(errors[family],t[family]) }}{% endif %}
+<div class="record-list">
+{% for record in collection.get('items',[]) if 'error' not in record %}<a class="record-row" href="{{ link(family,artifact=record.artifact_id,revision=record.revision,return_to=link('methods',artifact=none,revision=none)) }}"><h2 class="record-row-title">{{ record.lesson if family == 'experience' else record.description or record.name }}</h2><p class="record-row-description">{{ (record.situation if family == 'experience' else record.name)|truncate(220,true) }}</p><div class="document-meta">{{ t[family] }} · {{ t.revision }} {{ record.revision }} <span>{{ t.read_experience if family == 'experience' else t.read_skill }} →</span></div></a>
+{% else %}{% if not errors.get(family) %}<div class="quiet-empty"><h2>{{ (t.experiences_no_match if family == 'experience' else t.skills_no_match) if search_query else (t.experience_empty if family == 'experience' else t.skills_empty) }}</h2><p>{{ t.methods_empty_body }}</p></div>{% endif %}{% endfor %}
+</div>{{ pagination(collection.get('pager'),t,always=family == 'skill') }}
+
+{% endif %}

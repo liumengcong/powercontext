@@ -1,0 +1,83 @@
+/*
+ * Copyright (c) 2026 OceanBase.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import { defineConfig } from 'tsdown'
+
+const LICENSE_HEADER = `/*
+ * Copyright (c) 2026 OceanBase.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */\n`
+
+const banner = { js: LICENSE_HEADER, dts: LICENSE_HEADER }
+const hostExternal = [/^@deepseek-ai\//, /^node:/]
+
+export default defineConfig([
+  {
+    entry: {
+      index: 'src/index.ts',
+      invariant: 'src/invariant.ts',
+    },
+    outDir: 'lib',
+    format: ['esm'],
+    platform: 'node',
+    target: 'es2022',
+    dts: true,
+    banner,
+    clean: false,
+    fixedExtension: false,
+    external: hostExternal,
+  },
+  {
+    entry: { index: '../dsh-pet/src/index.ts' },
+    outDir: '../dsh-pet/lib',
+    format: ['esm'],
+    platform: 'node',
+    target: 'es2022',
+    dts: false,
+    banner,
+    fixedExtension: false,
+    external: hostExternal,
+  },
+  {
+    // Browser entry: DSH discovers `dsh.client` and serves this bundle under
+    // /plugins. It must be a closure factory, not an ES module; wrap-client.mjs
+    // turns this CJS output into `window.__ModuleLoader__.load({id, factory})`.
+    // React is a shared platform module, never inlined into the plugin.
+    entry: {
+      client: 'src/ui/client.tsx',
+    },
+    outDir: 'lib',
+    format: ['cjs'],
+    platform: 'browser',
+    target: 'es2022',
+    dts: true,
+    banner,
+    clean: false,
+    fixedExtension: true,
+    external: ['react', 'react/jsx-runtime'],
+  },
+])
