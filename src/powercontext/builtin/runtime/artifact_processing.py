@@ -117,6 +117,7 @@ class ArtifactProcessingBinding:
     # Only automatic admission is filtered; already accepted requests retain
     # their own Worker authorization and domain completion semantics.
     automatic_scope_filter: Callable[[AsyncConnection, tuple[str, ...]], Awaitable[frozenset[str]]] | None = None
+    automatic_count_filter: Callable[[AsyncConnection, tuple[str, ...]], Awaitable[frozenset[str]]] | None = None
 
     def __post_init__(self) -> None:
         if not self.binding_name or self.binding_name != self.binding_name.strip():
@@ -400,6 +401,8 @@ class _FamilyState:
     notification_at_start: int = 0
     discovery_pending: bool = True
     next_schedule_at: float | None = None
+    next_count_scan_at: float = 0.0
+    count_scan_after: int = 0
     next_discovery_at: float = 0.0
     automatic_next: bool = False
     overflow_not_before: float = 0.0
@@ -633,6 +636,12 @@ class ArtifactProcessingSupervisor:
                     self._log_failure(state, None, error, "scope_discovery")
                 finally:
                     state.discovery_seconds = asyncio.get_running_loop().time() - now
+            if (
+                state.binding.automatic_count_filter is not None
+                and now >= state.next_count_scan_at
+                and self._fresh_capacity(state) > 0
+            ):
+                await self._discover_count_threshold(state)
             await self._activate_retries(state)
             await self._dispatch(state)
 
@@ -779,6 +788,58 @@ class ArtifactProcessingSupervisor:
         state.scan_in_progress = scan_in_progress
         state.next_schedule_at = next_schedule_at
         state.next_discovery_at = next_discovery_at
+        for scope in admitted:
+            self._enqueue(state, scope)
+
+    async def _discover_count_threshold(self, state: _FamilyState) -> None:
+        """Run a cursor-based count scan without advancing the scheduled-time checkpoint."""
+
+        binding = state.binding
+        count_filter = binding.automatic_count_filter
+        if count_filter is None:
+            return
+        capacity = self._fresh_capacity(state)
+        next_after = state.count_scan_after
+        admitted: list[str] = []
+        async with self._database.transaction() as connection:
+            await self._leases.require_fence(connection, self._require_current_fence())
+            persisted = await self._binding_states.load(connection, binding.binding_name, for_update=True)
+            if persisted is not None and persisted.scan_in_progress:
+                state.next_count_scan_at = asyncio.get_running_loop().time() + 0.05
+                return
+            scan = await self._binding_states.start_scan(
+                connection,
+                binding.binding_name,
+                None if persisted is None else persisted.last_schedule_checkpoint_at,
+            )
+            rows = await self._intents.scan(
+                connection,
+                binding.binding_name,
+                after_sequence=next_after,
+                limit=min(capacity, _DISCOVERY_PAGE_SIZE),
+                dirty_only=True,
+                upper_sequence=scan.scan_upper_pending_sequence,
+            )
+            candidates = tuple(
+                row.scope_id
+                for row in rows
+                if row.scope_id not in state.queued
+                and row.scope_id not in state.running
+                and row.scope_id not in state.retries
+                and row.last_auto_scan_generation != scan.scan_generation
+            )
+            eligible = await count_filter(connection, candidates) if candidates else frozenset()
+            for row in rows:
+                next_after = row.pending_sequence
+                if row.scope_id not in eligible:
+                    continue
+                await self._intents.admit(connection, row.scope_id, binding.binding_name, scan.scan_generation)
+                admitted.append(row.scope_id)
+            await self._binding_states.finish_scan(connection, binding.binding_name)
+        if len(rows) < min(capacity, _DISCOVERY_PAGE_SIZE):
+            next_after = 0
+        state.count_scan_after = next_after
+        state.next_count_scan_at = asyncio.get_running_loop().time() + 0.1
         for scope in admitted:
             self._enqueue(state, scope)
 
@@ -1093,6 +1154,8 @@ class ArtifactProcessingSupervisor:
                 continue
             if state.next_schedule_at is not None:
                 deadlines.append(state.next_schedule_at)
+            if state.binding.automatic_count_filter is not None:
+                deadlines.append(state.next_count_scan_at)
             if state.discovery_pending or state.scan_in_progress or not state.reconcile_complete or state.degraded:
                 deadlines.append(max(now, state.next_discovery_at))
         return None if not deadlines else max(0.001, min(deadlines) - now)

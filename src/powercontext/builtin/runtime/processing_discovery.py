@@ -16,14 +16,14 @@
 
 from __future__ import annotations
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from powercontext.builtin.persistence.cursors import SourceCursorRepository
 from powercontext.builtin.persistence.database import AsyncDatabase
 from powercontext.builtin.persistence.processing_intents import ArtifactProcessingIntentRepository
 from powercontext.builtin.persistence.supervision import ArtifactProcessingFence, ArtifactProcessingLeaseRepository
-from powercontext.builtin.persistence.tables import PROFILE_POLICIES_TABLE, SOURCE_JOURNAL_HEADS_TABLE
+from powercontext.builtin.persistence.tables import PROFILE_POLICIES_TABLE, SOURCES_TABLE, SOURCE_JOURNAL_HEADS_TABLE
 
 
 async def enabled_profile_scopes(connection: AsyncConnection, scope_ids: tuple[str, ...]) -> frozenset[str]:
@@ -48,10 +48,37 @@ async def enabled_profile_scopes(connection: AsyncConnection, scope_ids: tuple[s
 class SourceProcessingPendingProvider:
     """Inspect journal metadata, never Source bodies, prompts, or models."""
 
-    def __init__(self, database: AsyncDatabase, binding_name: str, artifact_family: str) -> None:
+    def __init__(
+        self,
+        database: AsyncDatabase,
+        binding_name: str,
+        artifact_family: str,
+        source_count_threshold: int | None = None,
+    ) -> None:
         self._database = database
         self._binding = binding_name
         self._family = artifact_family
+        self._source_count_threshold = source_count_threshold
+
+    async def count_eligible(self, connection: AsyncConnection, scope_ids: tuple[str, ...]) -> frozenset[str]:
+        """Filter automatic scans by distinct persisted journal identities after the cursor."""
+
+        threshold = self._source_count_threshold
+        if threshold is None or not scope_ids:
+            return frozenset()
+        cursors = SourceCursorRepository()
+        eligible: set[str] = set()
+        for scope_id in scope_ids:
+            cursor = await cursors.load(connection, scope_id, self._binding)
+            after = 0 if cursor is None else cursor.cursor.sequence
+            count = await connection.scalar(
+                select(func.count())
+                .select_from(SOURCES_TABLE)
+                .where(SOURCES_TABLE.c.scope_id == scope_id, SOURCES_TABLE.c.journal_position > after)
+            )
+            if int(count or 0) >= threshold:
+                eligible.add(scope_id)
+        return frozenset(eligible)
 
     async def reconcile(self, after_scope_id: str | None, limit: int, *, fence: ArtifactProcessingFence) -> str | None:
         heads = SOURCE_JOURNAL_HEADS_TABLE

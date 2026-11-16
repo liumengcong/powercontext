@@ -248,6 +248,7 @@ from powercontext.builtin.runtime.recall_sufficiency import (
     build_recall_candidates,
     recall_effort,
 )
+from powercontext.builtin.runtime.source_lifecycle import SourceLifecycleApplication
 from powercontext.builtin.runtime.statistics import RelationalScopedStatistics, overview_selection
 from powercontext.builtin.scope import ScopeApplication, ScopeDescriptor, ScopeSelection
 from powercontext.builtin.scope.subject_sources import SubjectSourceService
@@ -2688,6 +2689,15 @@ class ScopedTopicMemoryApplication:
                     embedding_timeout_seconds,
                 )
         observer = self._runtime._topic_memory_search_observer
+        inactive = (
+            frozenset()
+            if getattr(self._runtime._provider, "database", None) is None
+            else await self._runtime.lifecycle.for_scope(self.scope_id).inactive_topic_artifact_ids()
+        )
+        if inactive:
+            result = result.model_copy(
+                update={"hits": tuple(hit for hit in result.hits if hit.artifact_ref.artifact_id not in inactive)}
+            )
         if observer is not None:
             try:
                 observer(result.mode, used_fallback)
@@ -3120,6 +3130,7 @@ class BuiltinRuntime:
         self._scheduler: AsyncIOScheduler | None = None
         self._scheduler_runtime_key: str | None = None
         self.sources = SourceApplication(self)
+        self.lifecycle = SourceLifecycleApplication(self)
         self.ingestion = RemoteIngestionApplication(self, remote_ingestion)
         self.code = CodeApplication(self, code_service or CodeService(CodeConfig()))
         self.context = ContextApplication(self)

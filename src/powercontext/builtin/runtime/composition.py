@@ -97,6 +97,7 @@ from powercontext.builtin.persistence.processing_migration import (
     bootstrap_processing_schema,
 )
 from powercontext.builtin.persistence.scope_search_schema import ensure_scope_search_schema
+from powercontext.builtin.persistence.seekdb.memory_index import SeekDBMemoryIndex
 from powercontext.builtin.persistence.seekdb.profile import SeekDBConfig, SeekDBProfile
 from powercontext.builtin.persistence.skill_distribution_schema import ensure_skill_distribution_schema
 from powercontext.builtin.persistence.sqlite.experience_index import SQLiteExperienceFTSIndex
@@ -770,7 +771,24 @@ def _artifact_processing_bindings(  # noqa: C901 - validate and assemble one reg
         else:
             entrypoint = partial(run_family_worker, FamilyWorkerSpec(config=config, worker_security=worker_security))
         interval = None if family == "profile" else automatic[family]
+        count_threshold = (
+            config.runtime.memory_source_count_threshold
+            if family == "memory"
+            else config.runtime.topic_memory_source_count_threshold
+            if family == "topic-memory"
+            else None
+        )
         binding = canonical[family]
+        pending_provider = (
+            None
+            if family == "skill"
+            else SourceProcessingPendingProvider(contexts.database, binding, family, count_threshold)
+        )
+        count_filter = (
+            pending_provider.count_eligible
+            if count_threshold is not None and pending_provider is not None
+            else None
+        )
         configured.append(
             ArtifactProcessingBinding(
                 binding_name=binding,
@@ -783,10 +801,13 @@ def _artifact_processing_bindings(  # noqa: C901 - validate and assemble one reg
                 if family == "profile" and config.runtime.profile_schedule_enabled
                 else None,
                 timezone=config.runtime.profile_timezone if family == "profile" else "Asia/Shanghai",
-                pending_provider=None
-                if family == "skill"
-                else SourceProcessingPendingProvider(contexts.database, binding, family),
-                automatic_scope_filter=enabled_profile_scopes if family == "profile" else None,
+                pending_provider=pending_provider,
+                automatic_scope_filter=(
+                    enabled_profile_scopes
+                    if family == "profile"
+                    else None
+                ),
+                automatic_count_filter=count_filter,
             )
         )
     _validate_processing_registrations(configured)
@@ -963,7 +984,7 @@ async def open_builtin_contexts(
     indexes = [OceanBaseMemoryFTSIndex()]
     if embedding_model is not None:
         indexes.append(OceanBaseMemoryVectorIndex(embedding_model.profile))
-    index = CompositeMemoryIndex(*indexes)
+    index = SeekDBMemoryIndex(*indexes) if isinstance(database, SeekDBConfig) else CompositeMemoryIndex(*indexes)
     topic_indexes: list[TopicMemoryIndex] = [OceanBaseTopicMemoryFTSIndex()]
     if embedding_model is not None:
         topic_indexes.append(OceanBaseTopicMemoryVectorIndex(embedding_model.profile))
