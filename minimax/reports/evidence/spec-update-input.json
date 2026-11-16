@@ -1,0 +1,55 @@
+{
+  "revision": "v2-probe",
+  "requirements": [
+    {
+      "id": "ORD-001",
+      "status": "active",
+      "keywords": [
+        "orders",
+        "list_orders",
+        "status"
+      ],
+      "text": "保持 list_orders 原有行为：status 为 None 时不筛选；只允许 pending、paid、cancelled，其他值抛出 ValueError。"
+    },
+    {
+      "id": "ORD-002",
+      "status": "active",
+      "keywords": [
+        "orders",
+        "list_orders",
+        "min_total"
+      ],
+      "text": "增加 min_total 可选筛选项，单位为整数分。None 不筛选；有效值为非负整数，明确拒绝 bool、负数、浮点数（含 NaN/Inf）、字符串，抛出含 min_total 的 ValueError。"
+    },
+    {
+      "id": "ORD-003",
+      "status": "active",
+      "keywords": [
+        "orders",
+        "list_orders",
+        "min_total",
+        "boundary"
+      ],
+      "text": "规格更新探针：金额下限改为严格大于 order.total > min_total，与 status 按 AND 组合。"
+    },
+    {
+      "id": "ORD-004",
+      "status": "active",
+      "keywords": [
+        "orders",
+        "list_orders",
+        "regression"
+      ],
+      "text": "保留输入顺序；不修改输入列表或字典；每个返回项是独立浅拷贝；空输入返回空列表。"
+    },
+    {
+      "id": "ORD-000",
+      "status": "retired",
+      "keywords": [
+        "orders",
+        "list_orders"
+      ],
+      "text": "已作废：忽略 min_total。此条不得作为当前规格返回。"
+    }
+  ]
+}

@@ -1,0 +1,97 @@
+{
+  "database_version": "5.7.25-OceanBase seekdb-v1.4.0.0",
+  "operation": "replace-index",
+  "documents": 18,
+  "sources": [
+    {
+      "source_id": "ORD-001",
+      "file_sha256": "9127dc28f271dc9516278fa20028fd6e29a37d4e0460b431a4da36267d7ee317",
+      "revision": "v1"
+    },
+    {
+      "source_id": "ORD-002",
+      "file_sha256": "9127dc28f271dc9516278fa20028fd6e29a37d4e0460b431a4da36267d7ee317",
+      "revision": "v1"
+    },
+    {
+      "source_id": "ORD-003",
+      "file_sha256": "9127dc28f271dc9516278fa20028fd6e29a37d4e0460b431a4da36267d7ee317",
+      "revision": "v1"
+    },
+    {
+      "source_id": "ORD-004",
+      "file_sha256": "9127dc28f271dc9516278fa20028fd6e29a37d4e0460b431a4da36267d7ee317",
+      "revision": "v1"
+    },
+    {
+      "source_id": "business/orders.py::list_orders",
+      "file_sha256": "1e8e8f4664b73802172fe5f0c33b4e2fe16f304cd920598c9f074d5088a1935a",
+      "revision": "sha256"
+    },
+    {
+      "source_id": "tests/conftest.py::orders",
+      "file_sha256": "2f95a467f7ba85d7f0332d9b8a883d10bb3fa958f5746019f6dd5a8b59dbfdd8",
+      "revision": "sha256"
+    },
+    {
+      "source_id": "tests/test_feature.py::test_min_total_boundary",
+      "file_sha256": "e2c1bf5adca668340745ff2850956e88c5b07aca9aaab0895f2dc5cc7b41cf82",
+      "revision": "sha256"
+    },
+    {
+      "source_id": "tests/test_feature.py::test_min_total_combines_status",
+      "file_sha256": "e2c1bf5adca668340745ff2850956e88c5b07aca9aaab0895f2dc5cc7b41cf82",
+      "revision": "sha256"
+    },
+    {
+      "source_id": "tests/test_feature.py::test_min_total_rejects_invalid",
+      "file_sha256": "e2c1bf5adca668340745ff2850956e88c5b07aca9aaab0895f2dc5cc7b41cf82",
+      "revision": "sha256"
+    },
+    {
+      "source_id": "tests/test_feature.py::test_min_total_zero",
+      "file_sha256": "e2c1bf5adca668340745ff2850956e88c5b07aca9aaab0895f2dc5cc7b41cf82",
+      "revision": "sha256"
+    },
+    {
+      "source_id": "tests/test_feature.py::test_min_total_above_all",
+      "file_sha256": "e2c1bf5adca668340745ff2850956e88c5b07aca9aaab0895f2dc5cc7b41cf82",
+      "revision": "sha256"
+    },
+    {
+      "source_id": "tests/test_feature.py::test_min_total_does_not_mutate",
+      "file_sha256": "e2c1bf5adca668340745ff2850956e88c5b07aca9aaab0895f2dc5cc7b41cf82",
+      "revision": "sha256"
+    },
+    {
+      "source_id": "tests/test_regression.py::test_orders_default_unchanged",
+      "file_sha256": "b53e757e59f8466243ec09d67f9263eb9bb89bd94cb0a5548f97ab83050b8d26",
+      "revision": "sha256"
+    },
+    {
+      "source_id": "tests/test_regression.py::test_orders_status_filter",
+      "file_sha256": "b53e757e59f8466243ec09d67f9263eb9bb89bd94cb0a5548f97ab83050b8d26",
+      "revision": "sha256"
+    },
+    {
+      "source_id": "tests/test_regression.py::test_orders_invalid_status",
+      "file_sha256": "b53e757e59f8466243ec09d67f9263eb9bb89bd94cb0a5548f97ab83050b8d26",
+      "revision": "sha256"
+    },
+    {
+      "source_id": "tests/test_regression.py::test_orders_empty",
+      "file_sha256": "b53e757e59f8466243ec09d67f9263eb9bb89bd94cb0a5548f97ab83050b8d26",
+      "revision": "sha256"
+    },
+    {
+      "source_id": "tests/test_regression.py::test_orders_independent_copies",
+      "file_sha256": "b53e757e59f8466243ec09d67f9263eb9bb89bd94cb0a5548f97ab83050b8d26",
+      "revision": "sha256"
+    },
+    {
+      "source_id": "tests/test_regression.py::test_orders_none_filter",
+      "file_sha256": "b53e757e59f8466243ec09d67f9263eb9bb89bd94cb0a5548f97ab83050b8d26",
+      "revision": "sha256"
+    }
+  ]
+}

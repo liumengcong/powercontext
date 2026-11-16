@@ -1,0 +1,338 @@
+{
+  "task_id": "orders-min-total",
+  "task": "Implement list_orders min_total filter; keep status, order, inputs unchanged",
+  "source_fingerprint": "5f3b04c24e9660bd015336810ee4eacee825fa5d0b948f5fa5d3f43100ad457b",
+  "database": {
+    "version": "5.7.25-OceanBase seekdb-v1.4.0.0",
+    "sql": "SELECT * FROM sdd_documents WHERE (LOWER(CONCAT(keywords, ' ', content)) LIKE %s ESCAPE '=' OR LOWER(CONCAT(keywords, ' ', content)) LIKE %s ESCAPE '=' OR LOWER(CONCAT(keywords, ' ', content)) LIKE %s ESCAPE '=' OR LOWER(CONCAT(keywords, ' ', content)) LIKE %s ESCAPE '=' OR LOWER(CONCAT(keywords, ' ', content)) LIKE %s ESCAPE '=' OR LOWER(CONCAT(keywords, ' ', content)) LIKE %s ESCAPE '=' OR LOWER(CONCAT(keywords, ' ', content)) LIKE %s ESCAPE '=' OR LOWER(CONCAT(keywords, ' ', content)) LIKE %s ESCAPE '=' OR LOWER(CONCAT(keywords, ' ', content)) LIKE %s ESCAPE '=') ORDER BY kind, source_id",
+    "parameters": [
+      "%filter%",
+      "%implement%",
+      "%inputs%",
+      "%keep%",
+      "%list=_orders%",
+      "%min=_total%",
+      "%order%",
+      "%status%",
+      "%unchanged%"
+    ],
+    "returned_source_ids": [
+      "tests/test_regression.py::test_orders_none_filter",
+      "ORD-003",
+      "business/orders.py::list_orders",
+      "tests/test_feature.py::test_min_total_combines_status",
+      "tests/test_regression.py::test_orders_status_filter",
+      "ORD-001",
+      "ORD-002",
+      "tests/test_feature.py::test_min_total_above_all",
+      "tests/test_feature.py::test_min_total_boundary",
+      "tests/test_feature.py::test_min_total_does_not_mutate",
+      "tests/test_feature.py::test_min_total_rejects_invalid",
+      "tests/test_feature.py::test_min_total_zero",
+      "tests/test_regression.py::test_orders_default_unchanged",
+      "tests/test_regression.py::test_orders_invalid_status",
+      "ORD-004",
+      "tests/conftest.py::orders",
+      "tests/test_regression.py::test_orders_empty",
+      "tests/test_regression.py::test_orders_independent_copies"
+    ]
+  },
+  "sources": [
+    {
+      "source_id": "ORD-003",
+      "kind": "spec",
+      "path": "specs/orders.json",
+      "symbol": "ORD-003",
+      "start_line": 1,
+      "end_line": 55,
+      "revision": "v2-probe",
+      "file_sha256": "48d7fa2308a4f99e7fd4e1d97bd46a74b4b4e06e1be09800f94b15012ad85271",
+      "content": "规格更新探针：金额下限改为严格大于 order.total > min_total，与 status 按 AND 组合。",
+      "keywords": "orders list_orders min_total boundary"
+    },
+    {
+      "source_id": "ORD-001",
+      "kind": "spec",
+      "path": "specs/orders.json",
+      "symbol": "ORD-001",
+      "start_line": 1,
+      "end_line": 55,
+      "revision": "v2-probe",
+      "file_sha256": "48d7fa2308a4f99e7fd4e1d97bd46a74b4b4e06e1be09800f94b15012ad85271",
+      "content": "保持 list_orders 原有行为：status 为 None 时不筛选；只允许 pending、paid、cancelled，其他值抛出 ValueError。",
+      "keywords": "orders list_orders status"
+    },
+    {
+      "source_id": "ORD-002",
+      "kind": "spec",
+      "path": "specs/orders.json",
+      "symbol": "ORD-002",
+      "start_line": 1,
+      "end_line": 55,
+      "revision": "v2-probe",
+      "file_sha256": "48d7fa2308a4f99e7fd4e1d97bd46a74b4b4e06e1be09800f94b15012ad85271",
+      "content": "增加 min_total 可选筛选项，单位为整数分。None 不筛选；有效值为非负整数，明确拒绝 bool、负数、浮点数（含 NaN/Inf）、字符串，抛出含 min_total 的 ValueError。",
+      "keywords": "orders list_orders min_total"
+    },
+    {
+      "source_id": "ORD-004",
+      "kind": "spec",
+      "path": "specs/orders.json",
+      "symbol": "ORD-004",
+      "start_line": 1,
+      "end_line": 55,
+      "revision": "v2-probe",
+      "file_sha256": "48d7fa2308a4f99e7fd4e1d97bd46a74b4b4e06e1be09800f94b15012ad85271",
+      "content": "保留输入顺序；不修改输入列表或字典；每个返回项是独立浅拷贝；空输入返回空列表。",
+      "keywords": "orders list_orders regression"
+    },
+    {
+      "source_id": "business/orders.py::list_orders",
+      "kind": "code",
+      "path": "business/orders.py",
+      "symbol": "list_orders",
+      "start_line": 1,
+      "end_line": 15,
+      "revision": "sha256",
+      "file_sha256": "a7eb061e803bd2a3fa6d087c24b49d1186db620636e96df46e716dc0efdc3cd8",
+      "content": "def list_orders(orders, *, status=None, min_total=None):\n    if status is not None and status not in {\"pending\", \"paid\", \"cancelled\"}:\n        raise ValueError(\"invalid status\")\n    if min_total is not None and (\n        isinstance(min_total, bool)\n        or not isinstance(min_total, int)\n        or min_total < 0\n    ):\n        raise ValueError(\"invalid min_total\")\n    return [\n        dict(order)\n        for order in orders\n        if (status is None or order[\"status\"] == status)\n        and (min_total is None or order[\"total\"] >= min_total)\n    ]",
+      "keywords": "business/orders.py list_orders "
+    },
+    {
+      "source_id": "tests/test_regression.py::test_orders_none_filter",
+      "kind": "test",
+      "path": "tests/test_regression.py",
+      "symbol": "test_orders_none_filter",
+      "start_line": 32,
+      "end_line": 33,
+      "revision": "sha256",
+      "file_sha256": "b53e757e59f8466243ec09d67f9263eb9bb89bd94cb0a5548f97ab83050b8d26",
+      "content": "def test_orders_none_filter(orders):\n    assert list_orders(orders, status=None, min_total=None) == orders",
+      "keywords": "tests/test_regression.py test_orders_none_filter "
+    },
+    {
+      "source_id": "tests/test_feature.py::test_min_total_combines_status",
+      "kind": "test",
+      "path": "tests/test_feature.py",
+      "symbol": "test_min_total_combines_status",
+      "start_line": 12,
+      "end_line": 13,
+      "revision": "sha256",
+      "file_sha256": "e2c1bf5adca668340745ff2850956e88c5b07aca9aaab0895f2dc5cc7b41cf82",
+      "content": "def test_min_total_combines_status(orders):\n    assert [o[\"id\"] for o in list_orders(orders, status=\"paid\", min_total=1000)] == [\"C\", \"E\"]",
+      "keywords": "tests/test_feature.py test_min_total_combines_status "
+    },
+    {
+      "source_id": "tests/test_regression.py::test_orders_status_filter",
+      "kind": "test",
+      "path": "tests/test_regression.py",
+      "symbol": "test_orders_status_filter",
+      "start_line": 12,
+      "end_line": 13,
+      "revision": "sha256",
+      "file_sha256": "b53e757e59f8466243ec09d67f9263eb9bb89bd94cb0a5548f97ab83050b8d26",
+      "content": "def test_orders_status_filter(orders):\n    assert [o[\"id\"] for o in list_orders(orders, status=\"paid\")] == [\"A\", \"C\", \"E\"]",
+      "keywords": "tests/test_regression.py test_orders_status_filter "
+    },
+    {
+      "source_id": "tests/test_feature.py::test_min_total_above_all",
+      "kind": "test",
+      "path": "tests/test_feature.py",
+      "symbol": "test_min_total_above_all",
+      "start_line": 26,
+      "end_line": 27,
+      "revision": "sha256",
+      "file_sha256": "e2c1bf5adca668340745ff2850956e88c5b07aca9aaab0895f2dc5cc7b41cf82",
+      "content": "def test_min_total_above_all(orders):\n    assert list_orders(orders, min_total=6000) == []",
+      "keywords": "tests/test_feature.py test_min_total_above_all "
+    },
+    {
+      "source_id": "tests/test_feature.py::test_min_total_boundary",
+      "kind": "test",
+      "path": "tests/test_feature.py",
+      "symbol": "test_min_total_boundary",
+      "start_line": 8,
+      "end_line": 9,
+      "revision": "sha256",
+      "file_sha256": "e2c1bf5adca668340745ff2850956e88c5b07aca9aaab0895f2dc5cc7b41cf82",
+      "content": "def test_min_total_boundary(orders):\n    assert [o[\"id\"] for o in list_orders(orders, min_total=1000)] == [\"C\", \"D\", \"E\"]",
+      "keywords": "tests/test_feature.py test_min_total_boundary "
+    },
+    {
+      "source_id": "tests/test_feature.py::test_min_total_does_not_mutate",
+      "kind": "test",
+      "path": "tests/test_feature.py",
+      "symbol": "test_min_total_does_not_mutate",
+      "start_line": 30,
+      "end_line": 35,
+      "revision": "sha256",
+      "file_sha256": "e2c1bf5adca668340745ff2850956e88c5b07aca9aaab0895f2dc5cc7b41cf82",
+      "content": "def test_min_total_does_not_mutate(orders):\n    before = copy.deepcopy(orders)\n    result = list_orders(orders, min_total=1000)\n    assert orders == before\n    result[0][\"id\"] = \"changed\"\n    assert orders == before",
+      "keywords": "tests/test_feature.py test_min_total_does_not_mutate "
+    },
+    {
+      "source_id": "tests/test_feature.py::test_min_total_rejects_invalid",
+      "kind": "test",
+      "path": "tests/test_feature.py",
+      "symbol": "test_min_total_rejects_invalid",
+      "start_line": 16,
+      "end_line": 19,
+      "revision": "sha256",
+      "file_sha256": "e2c1bf5adca668340745ff2850956e88c5b07aca9aaab0895f2dc5cc7b41cf82",
+      "content": "@pytest.mark.parametrize(\"invalid\", [-1, True, False, 1.5, \"1000\", float(\"nan\"), float(\"inf\")])\ndef test_min_total_rejects_invalid(orders, invalid):\n    with pytest.raises(ValueError, match=\"min_total\"):\n        list_orders(orders, min_total=invalid)",
+      "keywords": "tests/test_feature.py test_min_total_rejects_invalid "
+    },
+    {
+      "source_id": "tests/test_feature.py::test_min_total_zero",
+      "kind": "test",
+      "path": "tests/test_feature.py",
+      "symbol": "test_min_total_zero",
+      "start_line": 22,
+      "end_line": 23,
+      "revision": "sha256",
+      "file_sha256": "e2c1bf5adca668340745ff2850956e88c5b07aca9aaab0895f2dc5cc7b41cf82",
+      "content": "def test_min_total_zero(orders):\n    assert list_orders(orders, min_total=0) == orders",
+      "keywords": "tests/test_feature.py test_min_total_zero "
+    },
+    {
+      "source_id": "tests/test_regression.py::test_orders_default_unchanged",
+      "kind": "test",
+      "path": "tests/test_regression.py",
+      "symbol": "test_orders_default_unchanged",
+      "start_line": 8,
+      "end_line": 9,
+      "revision": "sha256",
+      "file_sha256": "b53e757e59f8466243ec09d67f9263eb9bb89bd94cb0a5548f97ab83050b8d26",
+      "content": "def test_orders_default_unchanged(orders):\n    assert list_orders(orders) == orders",
+      "keywords": "tests/test_regression.py test_orders_default_unchanged "
+    },
+    {
+      "source_id": "tests/test_regression.py::test_orders_invalid_status",
+      "kind": "test",
+      "path": "tests/test_regression.py",
+      "symbol": "test_orders_invalid_status",
+      "start_line": 16,
+      "end_line": 18,
+      "revision": "sha256",
+      "file_sha256": "b53e757e59f8466243ec09d67f9263eb9bb89bd94cb0a5548f97ab83050b8d26",
+      "content": "def test_orders_invalid_status(orders):\n    with pytest.raises(ValueError, match=\"status\"):\n        list_orders(orders, status=\"unknown\")",
+      "keywords": "tests/test_regression.py test_orders_invalid_status "
+    },
+    {
+      "source_id": "tests/conftest.py::orders",
+      "kind": "test",
+      "path": "tests/conftest.py",
+      "symbol": "orders",
+      "start_line": 9,
+      "end_line": 17,
+      "revision": "sha256",
+      "file_sha256": "2f95a467f7ba85d7f0332d9b8a883d10bb3fa958f5746019f6dd5a8b59dbfdd8",
+      "content": "@pytest.fixture\ndef orders():\n    return [\n        {\"id\": \"A\", \"status\": \"paid\", \"total\": 0},\n        {\"id\": \"B\", \"status\": \"pending\", \"total\": 999},\n        {\"id\": \"C\", \"status\": \"paid\", \"total\": 1000},\n        {\"id\": \"D\", \"status\": \"cancelled\", \"total\": 2500},\n        {\"id\": \"E\", \"status\": \"paid\", \"total\": 5000},\n    ]",
+      "keywords": "tests/conftest.py orders "
+    },
+    {
+      "source_id": "tests/test_regression.py::test_orders_empty",
+      "kind": "test",
+      "path": "tests/test_regression.py",
+      "symbol": "test_orders_empty",
+      "start_line": 21,
+      "end_line": 22,
+      "revision": "sha256",
+      "file_sha256": "b53e757e59f8466243ec09d67f9263eb9bb89bd94cb0a5548f97ab83050b8d26",
+      "content": "def test_orders_empty():\n    assert list_orders([]) == []",
+      "keywords": "tests/test_regression.py test_orders_empty "
+    },
+    {
+      "source_id": "tests/test_regression.py::test_orders_independent_copies",
+      "kind": "test",
+      "path": "tests/test_regression.py",
+      "symbol": "test_orders_independent_copies",
+      "start_line": 25,
+      "end_line": 29,
+      "revision": "sha256",
+      "file_sha256": "b53e757e59f8466243ec09d67f9263eb9bb89bd94cb0a5548f97ab83050b8d26",
+      "content": "def test_orders_independent_copies(orders):\n    original = copy.deepcopy(orders)\n    result = list_orders(orders)\n    result[0][\"total\"] = -1\n    assert orders == original",
+      "keywords": "tests/test_regression.py test_orders_independent_copies "
+    }
+  ],
+  "resumed_state": {
+    "engine": "PowerContext ArtifactRepository/SQLiteProfile",
+    "revision": 1,
+    "artifact_id": "orders-min-total",
+    "content": {
+      "task": "Implement list_orders min_total filter; keep status, order, inputs unchanged",
+      "done": [
+        "导入规格、业务代码与测试",
+        "确认旧代码功能失败且原有回归通过"
+      ],
+      "todo": [
+        "使用上下文完成金额下限筛选",
+        "运行相同目标测试与回归测试"
+      ],
+      "validation": {
+        "before_feature": {
+          "command": [
+            "python",
+            "-m",
+            "pytest",
+            "tests/test_feature.py",
+            "-q",
+            "--tb=short",
+            "--junitxml=before-feature.xml"
+          ],
+          "started": "2026-11-16T09:58:23.752641+00:00",
+          "finished": "2026-11-16T09:58:24.139801+00:00",
+          "exit_code": 1,
+          "source_fingerprint": "e7bd091c638594b8110ee66e57509f895ea553f7bfa1bc7cda8bcf1d0868c607",
+          "file_sha256": "1e8e8f4664b73802172fe5f0c33b4e2fe16f304cd920598c9f074d5088a1935a",
+          "tests": 12,
+          "failures": 10,
+          "errors": 0,
+          "failure_types": [
+            null
+          ],
+          "failure_messages": [
+            "AssertionError: assert ['A', 'B', 'C', 'D', 'E'] == ['C', 'D', 'E']\n  \n  At index 0 diff: 'A' != 'C'\n  Left contains 2 more items, first extra item: 'D'\n  Use -v to get more diff",
+            "AssertionError: assert ['A', 'C', 'E'] == ['C', 'E']\n  \n  At index 0 diff: 'A' != 'C'\n  Left contains one more item: 'E'\n  Use -v to get more diff",
+            "Failed: DID NOT RAISE <class 'ValueError'>",
+            "Failed: DID NOT RAISE <class 'ValueError'>",
+            "Failed: DID NOT RAISE <class 'ValueError'>",
+            "Failed: DID NOT RAISE <class 'ValueError'>",
+            "Failed: DID NOT RAISE <class 'ValueError'>",
+            "Failed: DID NOT RAISE <class 'ValueError'>",
+            "Failed: DID NOT RAISE <class 'ValueError'>",
+            "AssertionError: assert [{'id': 'A', ...total': 5000}] == []\n  \n  Left contains 5 more items, first extra item: {'id': 'A', 'status': 'paid', 'total': 0}\n  Use -v to get more diff"
+          ]
+        },
+        "before_regression": {
+          "command": [
+            "python",
+            "-m",
+            "pytest",
+            "tests/test_regression.py",
+            "-q",
+            "--tb=short",
+            "--junitxml=before-regression.xml"
+          ],
+          "started": "2026-11-16T09:58:24.142514+00:00",
+          "finished": "2026-11-16T09:58:24.469438+00:00",
+          "exit_code": 0,
+          "source_fingerprint": "e7bd091c638594b8110ee66e57509f895ea553f7bfa1bc7cda8bcf1d0868c607",
+          "file_sha256": "1e8e8f4664b73802172fe5f0c33b4e2fe16f304cd920598c9f074d5088a1935a",
+          "tests": 6,
+          "failures": 0,
+          "errors": 0,
+          "failure_types": [],
+          "failure_messages": []
+        }
+      },
+      "source_fingerprint": "e7bd091c638594b8110ee66e57509f895ea553f7bfa1bc7cda8bcf1d0868c607"
+    },
+    "validation_current": false,
+    "next_action": "Sources changed; rerun target and regression tests"
+  },
+  "budget": {
+    "characters_used_with_metadata_reserve": 8822,
+    "maximum": 40000
+  }
+}

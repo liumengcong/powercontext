@@ -1,0 +1,23 @@
+{
+  "started": "2026-11-16T09:58:29.413545+00:00",
+  "finished": "2026-11-16T09:58:46.215125+00:00",
+  "http_status": 200,
+  "request_id": "074a06c59e76ec6dab18240ff1c0a3c2",
+  "id": "074a06c59e76ec6dab18240ff1c0a3c2",
+  "model": "MiniMax-M3.1-Flash",
+  "usage": {
+    "total_tokens": 5893,
+    "total_characters": 0,
+    "prompt_tokens": 4759,
+    "completion_tokens": 1134,
+    "completion_tokens_details": {
+      "reasoning_tokens": 963
+    },
+    "prompt_tokens_details": {
+      "cached_tokens": 128
+    }
+  },
+  "finish_reason": "stop",
+  "content": "{\"path\":\"business/orders.py\",\"content\":\"def list_orders(orders, *, status=None, min_total=None):\\n    if status is not None and status not in {\\\"pending\\\", \\\"paid\\\", \\\"cancelled\\\"}:\\n        raise ValueError(\\\"invalid status\\\")\\n    if min_total is not None and (\\n        isinstance(min_total, bool)\\n        or not isinstance(min_total, int)\\n        or min_total < 0\\n    ):\\n        raise ValueError(\\\"invalid min_total\\\")\\n    return [\\n        dict(order)\\n        for order in orders\\n        if (status is None or order[\\\"status\\\"] == status)\\n        and (min_total is None or order[\\\"total\\\"] >= min_total)\\n    ]\\n\"}",
+  "reasoning_saved": false
+}

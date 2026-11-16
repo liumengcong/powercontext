@@ -1,0 +1,18 @@
+{
+  "command": [
+    "python",
+    "-m",
+    "sdd_context",
+    "context",
+    "--project",
+    "$PROJECT",
+    "--runtime",
+    "$RUNTIME",
+    "--task-id",
+    "orders-min-total",
+    "--output",
+    "context-completed-resumed.json"
+  ],
+  "exit_code": 0,
+  "new_process": true
+}

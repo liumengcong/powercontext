@@ -1,0 +1,5 @@
+{
+  "tests/conftest.py": "2f95a467f7ba85d7f0332d9b8a883d10bb3fa958f5746019f6dd5a8b59dbfdd8",
+  "tests/test_feature.py": "e2c1bf5adca668340745ff2850956e88c5b07aca9aaab0895f2dc5cc7b41cf82",
+  "tests/test_regression.py": "b53e757e59f8466243ec09d67f9263eb9bb89bd94cb0a5548f97ab83050b8d26"
+}

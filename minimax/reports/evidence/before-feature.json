@@ -1,0 +1,34 @@
+{
+  "command": [
+    "python",
+    "-m",
+    "pytest",
+    "tests/test_feature.py",
+    "-q",
+    "--tb=short",
+    "--junitxml=before-feature.xml"
+  ],
+  "started": "2026-11-16T09:58:23.752641+00:00",
+  "finished": "2026-11-16T09:58:24.139801+00:00",
+  "exit_code": 1,
+  "source_fingerprint": "e7bd091c638594b8110ee66e57509f895ea553f7bfa1bc7cda8bcf1d0868c607",
+  "file_sha256": "1e8e8f4664b73802172fe5f0c33b4e2fe16f304cd920598c9f074d5088a1935a",
+  "tests": 12,
+  "failures": 10,
+  "errors": 0,
+  "failure_types": [
+    null
+  ],
+  "failure_messages": [
+    "AssertionError: assert ['A', 'B', 'C', 'D', 'E'] == ['C', 'D', 'E']\n  \n  At index 0 diff: 'A' != 'C'\n  Left contains 2 more items, first extra item: 'D'\n  Use -v to get more diff",
+    "AssertionError: assert ['A', 'C', 'E'] == ['C', 'E']\n  \n  At index 0 diff: 'A' != 'C'\n  Left contains one more item: 'E'\n  Use -v to get more diff",
+    "Failed: DID NOT RAISE <class 'ValueError'>",
+    "Failed: DID NOT RAISE <class 'ValueError'>",
+    "Failed: DID NOT RAISE <class 'ValueError'>",
+    "Failed: DID NOT RAISE <class 'ValueError'>",
+    "Failed: DID NOT RAISE <class 'ValueError'>",
+    "Failed: DID NOT RAISE <class 'ValueError'>",
+    "Failed: DID NOT RAISE <class 'ValueError'>",
+    "AssertionError: assert [{'id': 'A', ...total': 5000}] == []\n  \n  Left contains 5 more items, first extra item: {'id': 'A', 'status': 'paid', 'total': 0}\n  Use -v to get more diff"
+  ]
+}
