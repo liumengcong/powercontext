@@ -144,10 +144,11 @@ async def search_pdf_pages(memory, question: str, limit: int = 10) -> tuple[Memo
     if len(terms) > 8:
         chunk_size = 6
         last_start = len(terms) - chunk_size
+        window_count = min(8, max(2, (len(terms) + chunk_size - 1) // chunk_size))
         starts = sorted(
             {
-                round(last_start * index / 3)
-                for index in range(4)
+                round(last_start * index / (window_count - 1))
+                for index in range(window_count)
             }
         )
         queries.extend(" ".join(terms[start : start + chunk_size]) for start in starts)
