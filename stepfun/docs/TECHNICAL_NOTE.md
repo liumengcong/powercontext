@@ -10,6 +10,19 @@
 
 **状态与优化。** 集合名称绑定知识库、模型 SHA、精度及预处理指纹；切换知识库清空旧结果。同内容用稳定 ID 去重，内容变更保留新来源版本。文档按 240 Unicode 字符分块、40 字符重叠，批大小 8，按长度组批减少 padding 并恢复顺序；模型实例复用。基准通过固定精度/后端分别比较量化、批处理和后端，每组 3 轮，记录原始样本及中位数。
 
-**实测与边界（2026-11-16）。** TypeScript/生产构建、5 项逻辑测试、6 项真实 seekdb 基础设施测试及 HTTP 导入/查询检查通过。数据库测试使用合成向量，仅证明存储、全文/混合检索、去重、隔离、并发与重启恢复。**Chrome/Edge 浏览器端到端推理、WebGPU 自动降级、吞吐/延迟与 Recall@5/nDCG@5 尚待实测，不能宣称质量无损或性能提升。** 当前环境关闭浏览器操作；应用已提供一键评测，固定 32 篇文档和 16 条人工标注查询，FP32/WASM/b1、INT8/WASM/b1、INT8/WASM/b8、INT8/WebGPU/b8 四组配置；失败和降级轮次均保留。运行后附原始 JSON 与汇总表，并记录实际设备、浏览器和系统版本；GPU 降级样本不计作 GPU 成绩。
+**实测环境（2026-11-16）：** MacBook Air（Mac17,3），Apple M5，10 核 CPU / 10 核 GPU，24 GB；macOS 26.6（25G72），Safari 26.6。浏览器 hardwareConcurrency=8，deviceMemory 未提供。真实嵌入式 seekdb 1.4.0。
 
-**复现。** 在 `stepfun` 执行 `npm ci && npm run models && npm run build && npm start`，访问 `http://127.0.0.1:3000`。加载模型、导入语料、查询；点击「运行完整评测」，执行 `npm run report -- reports/benchmark-时间.json` 汇总。模型来源：`huggingface.co/Xenova/bge-small-zh-v1.5`；官方题面见 README。
+32 篇人工中文文档、16 条人工标注查询，4 配置各 3 轮，共 192 个查询样本；12/12 轮完成，实际后端均符合请求，无失败或降级。轮级加载/吞吐取 3 轮中位数；查询延迟取每配置 48 样本中位数，质量指标取均值。固定顺序、未随机化，未测温控/功耗；load 含本地文件/缓存、实例创建与首次预热，不含下载；e2e 计至评测预览文本显示。
+
+|配置（各 3 轮）|加载 ms|文档/秒|seekdb ms|端到端 ms|Recall@5|nDCG@5|
+|---|---:|---:|---:|---:|---:|---:|
+|fp32_wasm_b1|768|12.432|6.914|67.0|0.8958|0.8921|
+|q8_wasm_b1|549|11.478|8.396|66.0|0.8958|0.9102|
+|q8_wasm_b8|560|10.211|7.054|67.0|0.8958|0.8931|
+|q8_webgpu_b8|907|9.723|9.510|117.0|0.8958|0.8931|
+
+**结论：** 同为 WASM/b1，INT8 加载中位数 768→549 ms（减少 28.52%），Recall@5 变化 0，nDCG@5 +0.0182。文档吞吐 12.432→11.478 篇/秒，未提速；b8 与 WebGPU 本轮也较慢，不能宣称加速。结果仅适用于此设备、浏览器和小型语料。Chrome/Edge、无 WebGPU 时的自动降级，以及自有文档完整交互验收仍待补测。
+
+**复现。** 在 `stepfun` 执行 `npm ci && npm run models && npm run build && npm start`，访问 `http://127.0.0.1:3000`。加载模型、导入语料、查询；点击「运行完整评测」，执行 `npm run report -- reports/stepfun-benchmark.json` 汇总。模型来源：`huggingface.co/Xenova/bge-small-zh-v1.5`；官方题面见 README。
+
+原始报告、汇总、CSV 与环境记录见 reports/stepfun-benchmark.*、reports/environment.json；原始时间与排名保留，不用最好一轮替代汇总。

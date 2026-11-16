@@ -108,11 +108,102 @@
     ]
   },
   "browser": {
-    "executed": false,
-    "reason": "Codex Work 设置关闭本地浏览器操作",
-    "qualityMetrics": null,
-    "webgpu": null,
-    "wasm": null
+    "executed": true,
+    "operator": "用户在本机浏览器运行，助手核对原始报告与汇总",
+    "report": "reports/stepfun-benchmark.json",
+    "reportSha256": "eb4c6b899ac3f2ce3e10aaa2cc1548d1c5540211b353ef6d5eab1a389fd865e4",
+    "browser": "Safari 26.6",
+    "environment": "reports/environment.json",
+    "completedRuns": 12,
+    "totalRuns": 12,
+    "querySamples": 192,
+    "failedRuns": 0,
+    "fallbackRuns": 0,
+    "backendMatchingRuns": 12,
+    "webgpu": {
+      "completedRuns": 3,
+      "actualBackend": "webgpu"
+    },
+    "wasm": {
+      "completedRuns": 9,
+      "actualBackend": "wasm"
+    },
+    "qualityMetrics": [
+      {
+        "name": "fp32_wasm_b1",
+        "complete": 3,
+        "total": 3,
+        "requestedBackend": "wasm",
+        "actualBackends": "wasm",
+        "matchedRuns": 3,
+        "modelBytes": 94851877,
+        "loadMedianMs": 768,
+        "documentsPerSecond": 12.432012432012431,
+        "writeMedianMs": 258.1181669998914,
+        "refreshMedianMs": 410.0832919999957,
+        "seekdbMedianMs": 6.914312500040978,
+        "e2eMedianMs": 67,
+        "recall5": 0.8958333333333335,
+        "ndcg5": 0.8920726957241111
+      },
+      {
+        "name": "q8_wasm_b1",
+        "complete": 3,
+        "total": 3,
+        "requestedBackend": "wasm",
+        "actualBackends": "wasm",
+        "matchedRuns": 3,
+        "modelBytes": 24010842,
+        "loadMedianMs": 549,
+        "documentsPerSecond": 11.477761836441895,
+        "writeMedianMs": 323.9633339999709,
+        "refreshMedianMs": 408.7260829999577,
+        "seekdbMedianMs": 8.395520999911241,
+        "e2eMedianMs": 66.00000000001455,
+        "recall5": 0.8958333333333335,
+        "ndcg5": 0.9102299046805636
+      },
+      {
+        "name": "q8_wasm_b8",
+        "complete": 3,
+        "total": 3,
+        "requestedBackend": "wasm",
+        "actualBackends": "wasm",
+        "matchedRuns": 3,
+        "modelBytes": 24010842,
+        "loadMedianMs": 560,
+        "documentsPerSecond": 10.21059349074665,
+        "writeMedianMs": 53.93649999983609,
+        "refreshMedianMs": 411.5343329999596,
+        "seekdbMedianMs": 7.053979500080459,
+        "e2eMedianMs": 67,
+        "recall5": 0.8958333333333335,
+        "ndcg5": 0.8931450564799399
+      },
+      {
+        "name": "q8_webgpu_b8",
+        "complete": 3,
+        "total": 3,
+        "requestedBackend": "webgpu",
+        "actualBackends": "webgpu",
+        "matchedRuns": 3,
+        "modelBytes": 24010842,
+        "loadMedianMs": 907.0000000000001,
+        "documentsPerSecond": 9.723488301428137,
+        "writeMedianMs": 97.22883299994282,
+        "refreshMedianMs": 310.4257089998573,
+        "seekdbMedianMs": 9.509686999954283,
+        "e2eMedianMs": 117.00000000001455,
+        "recall5": 0.8958333333333335,
+        "ndcg5": 0.8931450564799399
+      }
+    ],
+    "pending": [
+      "Chrome/Edge 浏览器验收",
+      "无 WebGPU 环境的自动 WASM 降级验收",
+      "自己的文档及增量导入、知识库切换和重启的交互界面验收"
+    ]
   },
-  "claimScope": "合成向量数据库检查不作为浏览器推理或检索质量实测；没有编造性能指标。"
+  "claimScope": "真实 Safari 浏览器文档与查询推理、seekdb 混合检索和质量评测已记录；小型人工语料仅用于工程验收。数据库基础设施测试使用合成向量，单列。未宣称批处理/GPU 提速、通用质量无损或自动降级验收通过。",
+  "updatedAt": "2026-11-16T07:46:24.299352+00:00"
 }
