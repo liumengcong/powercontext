@@ -1,0 +1,38 @@
+{
+  "createdAt": "2026-11-16T06:41:25.721Z",
+  "kind": "real-seekdb-infrastructure-synthetic-vectors",
+  "cases": [
+    {
+      "name": "写入并刷新后数据库混合检索包含新增文档",
+      "passed": true,
+      "ms": 5010.841084000014
+    },
+    {
+      "name": "重复导入采用 upsert 不增加记录数",
+      "passed": true,
+      "ms": 232.24400000000605
+    },
+    {
+      "name": "切换知识库保持结果隔离",
+      "passed": true,
+      "ms": 133.21875
+    },
+    {
+      "name": "配置指纹隔离",
+      "passed": true,
+      "ms": 62.95924999998533
+    },
+    {
+      "name": "并发混合查询不串会话",
+      "passed": true,
+      "ms": 20.484375
+    },
+    {
+      "name": "关闭后重开可检索已有内容",
+      "passed": true,
+      "ms": 18.436291999998502
+    }
+  ],
+  "version": "5.7.25-OceanBase seekdb-v1.4.0.0",
+  "completed": true
+}

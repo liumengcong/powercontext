@@ -1,0 +1,118 @@
+{
+  "generatedAt": "2026-11-16T07:00:04.054054+00:00",
+  "host": {
+    "platform": "macOS-26.6-arm64-arm-64bit",
+    "architecture": "arm64"
+  },
+  "build": {
+    "typescript": "passed",
+    "productionBundle": "passed"
+  },
+  "unitTests": {
+    "passed": 5,
+    "failed": 0
+  },
+  "seekdbInfrastructure": {
+    "createdAt": "2026-11-16T06:41:25.721Z",
+    "kind": "real-seekdb-infrastructure-synthetic-vectors",
+    "cases": [
+      {
+        "name": "写入并刷新后数据库混合检索包含新增文档",
+        "passed": true,
+        "ms": 5010.841084000014
+      },
+      {
+        "name": "重复导入采用 upsert 不增加记录数",
+        "passed": true,
+        "ms": 232.24400000000605
+      },
+      {
+        "name": "切换知识库保持结果隔离",
+        "passed": true,
+        "ms": 133.21875
+      },
+      {
+        "name": "配置指纹隔离",
+        "passed": true,
+        "ms": 62.95924999998533
+      },
+      {
+        "name": "并发混合查询不串会话",
+        "passed": true,
+        "ms": 20.484375
+      },
+      {
+        "name": "关闭后重开可检索已有内容",
+        "passed": true,
+        "ms": 18.436291999998502
+      }
+    ],
+    "version": "5.7.25-OceanBase seekdb-v1.4.0.0",
+    "completed": true
+  },
+  "http": {
+    "kind": "real-local-http-and-seekdb-synthetic-vectors",
+    "cases": [
+      {
+        "name": "status",
+        "status": 200,
+        "passed": true,
+        "response": {
+          "count": 0,
+          "collection": "edge_http_smoke_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "version": "5.7.25-OceanBase seekdb-v1.4.0.0"
+        }
+      },
+      {
+        "name": "import",
+        "status": 200,
+        "passed": true,
+        "response": {
+          "writeMs": 14.59433299995726,
+          "refreshMs": 332.6582079999498,
+          "count": 1
+        }
+      },
+      {
+        "name": "search",
+        "status": 200,
+        "passed": true,
+        "response": {
+          "hits": [
+            {
+              "id": "http1",
+              "text": "本地 HTTP 链路测试",
+              "metadata": {
+                "id": "http1",
+                "chunk": 0,
+                "source": "HTTP检查",
+                "profile": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                "sourceId": "http-source"
+              },
+              "score": 0.0328
+            }
+          ],
+          "seekdbMs": 34.24258300004294
+        }
+      },
+      {
+        "name": "reject-wrong-vector-dimension",
+        "status": 400,
+        "passed": true
+      },
+      {
+        "name": "reject-cross-origin",
+        "status": 403,
+        "passed": true
+      }
+    ]
+  },
+  "browser": {
+    "executed": false,
+    "reason": "Codex Work 设置关闭本地浏览器操作",
+    "qualityMetrics": null,
+    "webgpu": null,
+    "wasm": null
+  },
+  "claimScope": "合成向量数据库检查不作为浏览器推理或检索质量实测；没有编造性能指标。"
+}
