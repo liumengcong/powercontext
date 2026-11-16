@@ -11,5 +11,7 @@
   "account_name": "nick1413582930",
   "account_profile_displayed_id": "1163193430074889",
   "account_profile_id_label": "阿里云账号 ID",
-  "account_evidence": "qoder-account.png"
+  "account_evidence": "qoder-account.png",
+  "qoder_uid": "01a1e3d8-df8c-74e4-91dc-9ab013e9b2e2",
+  "uid_verification": "Qoder Sites official CLI publishing action ownerUid, populated from server project.owner_user_id; matches logged-in CLI account avatar UUID"
 }
