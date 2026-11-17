@@ -4,7 +4,7 @@
 
 模块为开发助手选择当前有效的规格、Python 代码符号与测试来源，使用真实 seekdb SQL 查询结果组装上下文；通过 PowerContext Artifact 持久化任务进展，并在新进程中将读取的进展用于下一次上下文构造。开发助手通过 MiniMax 官方 API 接收上下文，生成订单金额筛选功能的业务代码。
 
-**当前交付状态**：本地参考实现已通过 18 项业务测试和 8 项模块测试。真实 seekdb、PowerContext 持久化与新进程恢复已实测。尚未执行 MiniMax API；没有伪造其响应或使用记录。必须完成下述 live 步骤并归档记录，再提交最终比赛版本。当前记录不代表已获比赛分数。
+**当前交付状态**：已于 2026 年 11 月 16 日通过 MiniMax 官方 API 完成真实代码修改，返回模型为 `MiniMax-M3.1-Flash`，响应 ID 为 `074a06c59e76ec6dab18240ff1c0a3c2`。完整证据已归档到 `reports/evidence/`，六项必做检查全部通过。2026 年 11 月 17 日再次运行全链路快照复验、18 项业务测试和 8 项模块测试，均通过。真实 seekdb、PowerContext 持久化与新进程恢复已实测。平台提交与评分以平台实际记录为准，本地通过不代表已获比赛分数。
 
 ## 1. 环境与安装
 
@@ -33,9 +33,9 @@ python3.12 -m venv .venv
 
 命令结束打印报告路径。`reference` **不会调用 MiniMax，不能作为 MiniMax 实际参与的证据**。已实测参考记录见 `reports/reference/`，当前状态见 `reports/submission-status.json`。
 
-## 3. 必须完成的真实 MiniMax 开发流程
+## 3. 真实 MiniMax 开发流程与已归档记录
 
-先按 `MiniMax开通说明.md` 获得可调用文本模型的 Key 和额度，然后：
+本次提交已完成该流程；评审可直接核对 `reports/evidence/`，无需再次付费调用。需要另行演示时，先按 `MiniMax开通说明.md` 获得可调用文本模型的 Key 和额度，然后：
 
 ```bash
 .venv/bin/python complete.py
@@ -53,7 +53,7 @@ python3.12 -m venv .venv
 
 MiniMax 接口默认 `https://api.minimax.cn/v1/chat/completions`，模型默认 `MiniMax-M3.1-Flash`；可通过 `.env` 调整为账号实际可用的官方端点/模型。记录包括请求内容、响应 ID、返回模型、用量、生成代码和应用哈希，不包含 Authorization 或模型私有思考内容。单次运行调用一次 API；失败时保留记录，由使用者决定是否重新运行，不自动重试计费。
 
-没有 Key 会明确报错，不会换用其他模型或伪造调用。API 通道尚待真实 Key 验证。模型若返回不合法结果、改动签名、修改允许范围以外的内容或功能测试不通过，流程终止，不会生成“材料已完成”状态。
+没有 Key 会明确报错，不会换用其他模型或伪造调用。已归档成功调用的 HTTP 状态为 200，返回代码与 `demo/business/orders.py`、`reports/evidence/after.py` 的 SHA-256 完全一致，详见 `minimax-response.json`、`minimax-application.json` 与 `reports/evidence-manifest.json`。模型若返回不合法结果、改动签名、修改允许范围以外的内容或功能测试不通过，流程终止，不会生成“材料已完成”状态。
 
 ## 4. 上下文模块入口
 
@@ -82,7 +82,7 @@ MiniMax 接口默认 `https://api.minimax.cn/v1/chat/completions`，模型默认
 | 交付的修改后代码与业务测试 | `demo/business/orders.py`、`demo/tests/` |
 | 模块测试 | `tests/test_context_module.py` |
 | 本机参考验证结果 | `reports/reference/`、`reports/module-tests.*` |
-| 真实 MiniMax 与整体验证记录 | 完成 live 后生成的 `reports/evidence/` |
+| 真实 MiniMax 与整体验证记录 | 已归档的 `reports/evidence/` 与文件哈希清单 `reports/evidence-manifest.json` |
 | 技术说明与复用声明 | `技术说明.md`、`THIRD_PARTY.md` |
 | 大赛提交操作 | `提交指南.md` |
 

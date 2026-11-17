@@ -1,0 +1,72 @@
+FFFFFFFFF.F.                                                             [100%]
+=================================== FAILURES ===================================
+___________________________ test_min_total_boundary ____________________________
+tests/test_feature.py:9: in test_min_total_boundary
+    assert [o["id"] for o in list_orders(orders, min_total=1000)] == ["C", "D", "E"]
+E   AssertionError: assert ['A', 'B', 'C', 'D', 'E'] == ['C', 'D', 'E']
+E     
+E     At index 0 diff: 'A' != 'C'
+E     Left contains 2 more items, first extra item: 'D'
+E     Use -v to get more diff
+________________________ test_min_total_combines_status ________________________
+tests/test_feature.py:13: in test_min_total_combines_status
+    assert [o["id"] for o in list_orders(orders, status="paid", min_total=1000)] == ["C", "E"]
+E   AssertionError: assert ['A', 'C', 'E'] == ['C', 'E']
+E     
+E     At index 0 diff: 'A' != 'C'
+E     Left contains one more item: 'E'
+E     Use -v to get more diff
+______________________ test_min_total_rejects_invalid[-1] ______________________
+tests/test_feature.py:18: in test_min_total_rejects_invalid
+    with pytest.raises(ValueError, match="min_total"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE <class 'ValueError'>
+_____________________ test_min_total_rejects_invalid[True] _____________________
+tests/test_feature.py:18: in test_min_total_rejects_invalid
+    with pytest.raises(ValueError, match="min_total"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE <class 'ValueError'>
+____________________ test_min_total_rejects_invalid[False] _____________________
+tests/test_feature.py:18: in test_min_total_rejects_invalid
+    with pytest.raises(ValueError, match="min_total"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE <class 'ValueError'>
+_____________________ test_min_total_rejects_invalid[1.5] ______________________
+tests/test_feature.py:18: in test_min_total_rejects_invalid
+    with pytest.raises(ValueError, match="min_total"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE <class 'ValueError'>
+_____________________ test_min_total_rejects_invalid[1000] _____________________
+tests/test_feature.py:18: in test_min_total_rejects_invalid
+    with pytest.raises(ValueError, match="min_total"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE <class 'ValueError'>
+_____________________ test_min_total_rejects_invalid[nan] ______________________
+tests/test_feature.py:18: in test_min_total_rejects_invalid
+    with pytest.raises(ValueError, match="min_total"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE <class 'ValueError'>
+_____________________ test_min_total_rejects_invalid[inf] ______________________
+tests/test_feature.py:18: in test_min_total_rejects_invalid
+    with pytest.raises(ValueError, match="min_total"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE <class 'ValueError'>
+___________________________ test_min_total_above_all ___________________________
+tests/test_feature.py:27: in test_min_total_above_all
+    assert list_orders(orders, min_total=6000) == []
+E   AssertionError: assert [{'id': 'A', ...total': 5000}] == []
+E     
+E     Left contains 5 more items, first extra item: {'id': 'A', 'status': 'paid', 'total': 0}
+E     Use -v to get more diff
+=========================== short test summary info ============================
+FAILED tests/test_feature.py::test_min_total_boundary - AssertionError: asser...
+FAILED tests/test_feature.py::test_min_total_combines_status - AssertionError...
+FAILED tests/test_feature.py::test_min_total_rejects_invalid[-1] - Failed: DI...
+FAILED tests/test_feature.py::test_min_total_rejects_invalid[True] - Failed: ...
+FAILED tests/test_feature.py::test_min_total_rejects_invalid[False] - Failed:...
+FAILED tests/test_feature.py::test_min_total_rejects_invalid[1.5] - Failed: D...
+FAILED tests/test_feature.py::test_min_total_rejects_invalid[1000] - Failed: ...
+FAILED tests/test_feature.py::test_min_total_rejects_invalid[nan] - Failed: D...
+FAILED tests/test_feature.py::test_min_total_rejects_invalid[inf] - Failed: D...
+FAILED tests/test_feature.py::test_min_total_above_all - AssertionError: asse...
+10 failed, 2 passed in 0.09s
