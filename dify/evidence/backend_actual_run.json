@@ -1,0 +1,461 @@
+{
+  "created_utc": "2026-11-16T15:08:22.683920+00:00",
+  "status": "passed",
+  "real_powercontext": true,
+  "real_http_server": true,
+  "dify_engine_executed": false,
+  "llm_executed": false,
+  "note": "真实后端/官方SDK证据，旁白使用规则自检文本；不作为 Dify Cloud 或模型调用的完成证明。",
+  "steps": [
+    {
+      "input": {
+        "player_key": "backend-evidence-player",
+        "request_id": "8398ee1a-f637-4077-b1c6-7a9958f79334",
+        "action": "寄存",
+        "message": "会打嗝的月亮"
+      },
+      "context_recalled": {
+        "album": [],
+        "card": {
+          "options": {
+            "A": [
+              "为梦境加一段片尾字幕",
+              1,
+              "梦境署名权"
+            ],
+            "B": [
+              "和失物签订梦境共享协议",
+              2,
+              "共享梦境协议"
+            ],
+            "C": [
+              "让检疫员客串梦里的路人",
+              0,
+              "路人乙通行证"
+            ]
+          },
+          "scene": "梦境检疫员发现失物正在偷做你的梦，要求现场处理。",
+          "title": "梦境检疫"
+        },
+        "choices": [],
+        "ending": "",
+        "event": {
+          "action": "寄存",
+          "callback": "",
+          "effect": "已登记失物，进入第一关。",
+          "message": "会打嗝的月亮"
+        },
+        "item": "会打嗝的月亮",
+        "progress": "已完成 0/3 关",
+        "receipt": "LP-B283B02BBD",
+        "score": 0,
+        "stamps": [],
+        "trait": "坚信自己是一颗带薪休假的土豆"
+      },
+      "actual_output": {
+        "answer": "柜员把眼镜往上推了推：关于“会打嗝的月亮”，本处已经认真地离谱了起来。\n\n已登记失物，进入第一关。\n\n顺便提醒，这件失物坚信自己是一颗带薪休假的土豆。\n\n---\n\n### 失物档案\n\n物品：会打嗝的月亮\n\n进度：已完成 0/3 关｜默契值：0/6\n\n纪念章：暂无\n\n档案号：LP-B283B02BBD\n\n\n\n### 当前窗口：梦境检疫\n\n梦境检疫员发现失物正在偷做你的梦，要求现场处理。\n\nA：为梦境加一段片尾字幕\n\nB：和失物签订梦境共享协议\n\nC：让检疫员客串梦里的路人\n\n下一次运行请选择 A/B/C；message 可以补一句你的脑洞。\n\n> PowerContext 记忆版本：0 → 1；本次已保存。",
+        "memory_before": 0,
+        "memory_after": 1,
+        "scope_id": "scp_11qv9ynstt4tkv48ffpg8v6sws",
+        "replayed": false,
+        "state_changed": true,
+        "powercontext": "1.2.0",
+        "source_id": "turn-baa67f71a5e294c154832cac35ebb2c54c26ee5a669d56d9dddc3887dbfdbcba"
+      }
+    },
+    {
+      "input": {
+        "player_key": "backend-evidence-player",
+        "request_id": "00b49e86-46f4-4f8c-8c7e-80917c784cef",
+        "action": "A",
+        "message": "请记得我给月亮买了芋泥啵啵"
+      },
+      "context_recalled": {
+        "album": [],
+        "card": {
+          "options": {
+            "A": [
+              "与失物协商轮流当主人",
+              2,
+              "共同监护协议"
+            ],
+            "B": [
+              "请柜员检查失物的工牌",
+              0,
+              "失物临时工牌"
+            ],
+            "C": [
+              "承认自己确实需要被认领",
+              1,
+              "人类认领申请表"
+            ]
+          },
+          "scene": "失物突然声称自己才是主人，而你只是它弄丢的人类。",
+          "title": "身份复核"
+        },
+        "choices": [
+          {
+            "choice": "A",
+            "note": "请记得我给月亮买了芋泥啵啵",
+            "stage": "梦境检疫",
+            "text": "为梦境加一段片尾字幕"
+          }
+        ],
+        "ending": "",
+        "event": {
+          "action": "A",
+          "callback": "你上次在‘梦境检疫’选择了‘为梦境加一段片尾字幕’。当时还说：请记得我给月亮买了芋泥啵啵",
+          "effect": "你选择了“为梦境加一段片尾字幕”，获得“梦境署名权”，默契值 +1。",
+          "message": "请记得我给月亮买了芋泥啵啵"
+        },
+        "item": "会打嗝的月亮",
+        "progress": "已完成 1/3 关",
+        "receipt": "LP-B283B02BBD",
+        "score": 1,
+        "stamps": [
+          "梦境署名权"
+        ],
+        "trait": "坚信自己是一颗带薪休假的土豆"
+      },
+      "actual_output": {
+        "answer": "柜员把眼镜往上推了推：关于“会打嗝的月亮”，本处已经认真地离谱了起来。\n\n你选择了“为梦境加一段片尾字幕”，获得“梦境署名权”，默契值 +1。\n\n老规矩，我可记着呢：你上次在‘梦境检疫’选择了‘为梦境加一段片尾字幕’。当时还说：请记得我给月亮买了芋泥啵啵\n\n顺便提醒，这件失物坚信自己是一颗带薪休假的土豆。\n\n---\n\n### 失物档案\n\n物品：会打嗝的月亮\n\n进度：已完成 1/3 关｜默契值：1/6\n\n纪念章：梦境署名权\n\n档案号：LP-B283B02BBD\n\n\n\n### 当前窗口：身份复核\n\n失物突然声称自己才是主人，而你只是它弄丢的人类。\n\nA：与失物协商轮流当主人\n\nB：请柜员检查失物的工牌\n\nC：承认自己确实需要被认领\n\n下一次运行请选择 A/B/C；message 可以补一句你的脑洞。\n\n> PowerContext 记忆版本：1 → 2；本次已保存。",
+        "memory_before": 1,
+        "memory_after": 2,
+        "scope_id": "scp_11qv9ynstt4tkv48ffpg8v6sws",
+        "replayed": false,
+        "state_changed": true,
+        "powercontext": "1.2.0",
+        "source_id": "turn-8eb6cd0a86fe6f25287784577e3c84cb9fa57c8b09ef7bad64faede861151d7f"
+      }
+    },
+    {
+      "input": {
+        "player_key": "backend-evidence-player",
+        "request_id": "18c4c297-58a0-404c-855a-7f523e5342ad",
+        "action": "回访",
+        "message": "新会话，回来看看"
+      },
+      "context_recalled": {
+        "album": [],
+        "card": {
+          "options": {
+            "A": [
+              "与失物协商轮流当主人",
+              2,
+              "共同监护协议"
+            ],
+            "B": [
+              "请柜员检查失物的工牌",
+              0,
+              "失物临时工牌"
+            ],
+            "C": [
+              "承认自己确实需要被认领",
+              1,
+              "人类认领申请表"
+            ]
+          },
+          "scene": "失物突然声称自己才是主人，而你只是它弄丢的人类。",
+          "title": "身份复核"
+        },
+        "choices": [
+          {
+            "choice": "A",
+            "note": "请记得我给月亮买了芋泥啵啵",
+            "stage": "梦境检疫",
+            "text": "为梦境加一段片尾字幕"
+          }
+        ],
+        "ending": "",
+        "event": {
+          "action": "回访",
+          "callback": "你上次在‘梦境检疫’选择了‘为梦境加一段片尾字幕’。当时还说：请记得我给月亮买了芋泥啵啵",
+          "effect": "从 PowerContext 读取已有存档；本操作不推进关卡。",
+          "message": "新会话，回来看看"
+        },
+        "item": "会打嗝的月亮",
+        "progress": "已完成 1/3 关",
+        "receipt": "LP-B283B02BBD",
+        "score": 1,
+        "stamps": [
+          "梦境署名权"
+        ],
+        "trait": "坚信自己是一颗带薪休假的土豆"
+      },
+      "actual_output": {
+        "answer": "柜员把眼镜往上推了推：关于“会打嗝的月亮”，本处已经认真地离谱了起来。\n\n从 PowerContext 读取已有存档；本操作不推进关卡。\n\n老规矩，我可记着呢：你上次在‘梦境检疫’选择了‘为梦境加一段片尾字幕’。当时还说：请记得我给月亮买了芋泥啵啵\n\n顺便提醒，这件失物坚信自己是一颗带薪休假的土豆。\n\n---\n\n### 失物档案\n\n物品：会打嗝的月亮\n\n进度：已完成 1/3 关｜默契值：1/6\n\n纪念章：梦境署名权\n\n档案号：LP-B283B02BBD\n\n\n\n### 当前窗口：身份复核\n\n失物突然声称自己才是主人，而你只是它弄丢的人类。\n\nA：与失物协商轮流当主人\n\nB：请柜员检查失物的工牌\n\nC：承认自己确实需要被认领\n\n下一次运行请选择 A/B/C；message 可以补一句你的脑洞。\n\n> PowerContext 记忆版本：2 → 2；本次只读回访。",
+        "memory_before": 2,
+        "memory_after": 2,
+        "scope_id": "scp_11qv9ynstt4tkv48ffpg8v6sws",
+        "replayed": false,
+        "state_changed": false,
+        "powercontext": "1.2.0"
+      }
+    },
+    {
+      "input": {
+        "player_key": "backend-evidence-player",
+        "request_id": "fc85199d-f3a3-49bc-8417-9b2b571822a1",
+        "action": "回访",
+        "message": "服务重启后的回访"
+      },
+      "context_recalled": {
+        "album": [],
+        "card": {
+          "options": {
+            "A": [
+              "与失物协商轮流当主人",
+              2,
+              "共同监护协议"
+            ],
+            "B": [
+              "请柜员检查失物的工牌",
+              0,
+              "失物临时工牌"
+            ],
+            "C": [
+              "承认自己确实需要被认领",
+              1,
+              "人类认领申请表"
+            ]
+          },
+          "scene": "失物突然声称自己才是主人，而你只是它弄丢的人类。",
+          "title": "身份复核"
+        },
+        "choices": [
+          {
+            "choice": "A",
+            "note": "请记得我给月亮买了芋泥啵啵",
+            "stage": "梦境检疫",
+            "text": "为梦境加一段片尾字幕"
+          }
+        ],
+        "ending": "",
+        "event": {
+          "action": "回访",
+          "callback": "你上次在‘梦境检疫’选择了‘为梦境加一段片尾字幕’。当时还说：请记得我给月亮买了芋泥啵啵",
+          "effect": "从 PowerContext 读取已有存档；本操作不推进关卡。",
+          "message": "服务重启后的回访"
+        },
+        "item": "会打嗝的月亮",
+        "progress": "已完成 1/3 关",
+        "receipt": "LP-B283B02BBD",
+        "score": 1,
+        "stamps": [
+          "梦境署名权"
+        ],
+        "trait": "坚信自己是一颗带薪休假的土豆"
+      },
+      "actual_output": {
+        "answer": "柜员把眼镜往上推了推：关于“会打嗝的月亮”，本处已经认真地离谱了起来。\n\n从 PowerContext 读取已有存档；本操作不推进关卡。\n\n老规矩，我可记着呢：你上次在‘梦境检疫’选择了‘为梦境加一段片尾字幕’。当时还说：请记得我给月亮买了芋泥啵啵\n\n顺便提醒，这件失物坚信自己是一颗带薪休假的土豆。\n\n---\n\n### 失物档案\n\n物品：会打嗝的月亮\n\n进度：已完成 1/3 关｜默契值：1/6\n\n纪念章：梦境署名权\n\n档案号：LP-B283B02BBD\n\n\n\n### 当前窗口：身份复核\n\n失物突然声称自己才是主人，而你只是它弄丢的人类。\n\nA：与失物协商轮流当主人\n\nB：请柜员检查失物的工牌\n\nC：承认自己确实需要被认领\n\n下一次运行请选择 A/B/C；message 可以补一句你的脑洞。\n\n> PowerContext 记忆版本：2 → 2；本次只读回访。",
+        "memory_before": 2,
+        "memory_after": 2,
+        "scope_id": "scp_11qv9ynstt4tkv48ffpg8v6sws",
+        "replayed": false,
+        "state_changed": false,
+        "powercontext": "1.2.0"
+      }
+    },
+    {
+      "input": {
+        "player_key": "backend-evidence-player",
+        "request_id": "e3d09b25-c142-4715-b22e-e6554fc802be",
+        "action": "B",
+        "message": ""
+      },
+      "context_recalled": {
+        "album": [],
+        "card": {
+          "options": {
+            "A": [
+              "给它开一张情绪病假条",
+              2,
+              "情绪病假条"
+            ],
+            "B": [
+              "让它和安检门互相道歉",
+              1,
+              "安检门的道歉信"
+            ],
+            "C": [
+              "把委屈折成纸飞机寄走",
+              0,
+              "折叠的委屈"
+            ]
+          },
+          "scene": "安检门坚持认为失物有三公斤委屈，拒绝放行。",
+          "title": "情绪安检"
+        },
+        "choices": [
+          {
+            "choice": "A",
+            "note": "请记得我给月亮买了芋泥啵啵",
+            "stage": "梦境检疫",
+            "text": "为梦境加一段片尾字幕"
+          },
+          {
+            "choice": "B",
+            "note": "",
+            "stage": "身份复核",
+            "text": "请柜员检查失物的工牌"
+          }
+        ],
+        "ending": "",
+        "event": {
+          "action": "B",
+          "callback": "你上次在‘身份复核’选择了‘请柜员检查失物的工牌’。",
+          "effect": "你选择了“请柜员检查失物的工牌”，获得“失物临时工牌”，默契值 +0。",
+          "message": ""
+        },
+        "item": "会打嗝的月亮",
+        "progress": "已完成 2/3 关",
+        "receipt": "LP-B283B02BBD",
+        "score": 1,
+        "stamps": [
+          "梦境署名权",
+          "失物临时工牌"
+        ],
+        "trait": "坚信自己是一颗带薪休假的土豆"
+      },
+      "actual_output": {
+        "answer": "柜员把眼镜往上推了推：关于“会打嗝的月亮”，本处已经认真地离谱了起来。\n\n你选择了“请柜员检查失物的工牌”，获得“失物临时工牌”，默契值 +0。\n\n老规矩，我可记着呢：你上次在‘身份复核’选择了‘请柜员检查失物的工牌’。\n\n顺便提醒，这件失物坚信自己是一颗带薪休假的土豆。\n\n---\n\n### 失物档案\n\n物品：会打嗝的月亮\n\n进度：已完成 2/3 关｜默契值：1/6\n\n纪念章：梦境署名权、失物临时工牌\n\n档案号：LP-B283B02BBD\n\n\n\n### 当前窗口：情绪安检\n\n安检门坚持认为失物有三公斤委屈，拒绝放行。\n\nA：给它开一张情绪病假条\n\nB：让它和安检门互相道歉\n\nC：把委屈折成纸飞机寄走\n\n下一次运行请选择 A/B/C；message 可以补一句你的脑洞。\n\n> PowerContext 记忆版本：2 → 3；本次已保存。",
+        "memory_before": 2,
+        "memory_after": 3,
+        "scope_id": "scp_11qv9ynstt4tkv48ffpg8v6sws",
+        "replayed": false,
+        "state_changed": true,
+        "powercontext": "1.2.0",
+        "source_id": "turn-a440357d4ba19f1218e6cfef7022b56371ef30af6a5159452939fc51c4d8767f"
+      }
+    },
+    {
+      "input": {
+        "player_key": "backend-evidence-player",
+        "request_id": "a1d251ce-2cbe-4c86-a0b7-49a14fda92a4",
+        "action": "C",
+        "message": ""
+      },
+      "context_recalled": {
+        "album": [
+          {
+            "ending": "反向认领：失物成功把你领回了家",
+            "item": "会打嗝的月亮",
+            "receipt": "LP-B283B02BBD"
+          }
+        ],
+        "card": null,
+        "choices": [
+          {
+            "choice": "A",
+            "note": "请记得我给月亮买了芋泥啵啵",
+            "stage": "梦境检疫",
+            "text": "为梦境加一段片尾字幕"
+          },
+          {
+            "choice": "B",
+            "note": "",
+            "stage": "身份复核",
+            "text": "请柜员检查失物的工牌"
+          },
+          {
+            "choice": "C",
+            "note": "",
+            "stage": "情绪安检",
+            "text": "把委屈折成纸飞机寄走"
+          }
+        ],
+        "ending": "反向认领：失物成功把你领回了家",
+        "event": {
+          "action": "C",
+          "callback": "你上次在‘情绪安检’选择了‘把委屈折成纸飞机寄走’。",
+          "effect": "你选择了“把委屈折成纸飞机寄走”，获得“折叠的委屈”，默契值 +0。 三关完成，已生成结局。",
+          "message": ""
+        },
+        "item": "会打嗝的月亮",
+        "progress": "已完成 3/3 关",
+        "receipt": "LP-B283B02BBD",
+        "score": 1,
+        "stamps": [
+          "梦境署名权",
+          "失物临时工牌",
+          "折叠的委屈"
+        ],
+        "trait": "坚信自己是一颗带薪休假的土豆"
+      },
+      "actual_output": {
+        "answer": "柜员把眼镜往上推了推：关于“会打嗝的月亮”，本处已经认真地离谱了起来。\n\n你选择了“把委屈折成纸飞机寄走”，获得“折叠的委屈”，默契值 +0。 三关完成，已生成结局。\n\n老规矩，我可记着呢：你上次在‘情绪安检’选择了‘把委屈折成纸飞机寄走’。\n\n顺便提醒，这件失物坚信自己是一颗带薪休假的土豆。\n\n---\n\n### 失物档案\n\n物品：会打嗝的月亮\n\n进度：已完成 3/3 关｜默契值：1/6\n\n纪念章：梦境署名权、失物临时工牌、折叠的委屈\n\n档案号：LP-B283B02BBD\n\n结局：反向认领：失物成功把你领回了家\n\n下一步：回访看彩蛋；档案看收藏；重开后可寄存新物品。\n\n\n\n### 收藏册\n\n会打嗝的月亮 → 反向认领：失物成功把你领回了家\n\n> PowerContext 记忆版本：3 → 4；本次已保存。",
+        "memory_before": 3,
+        "memory_after": 4,
+        "scope_id": "scp_11qv9ynstt4tkv48ffpg8v6sws",
+        "replayed": false,
+        "state_changed": true,
+        "powercontext": "1.2.0",
+        "source_id": "turn-34a0e02af6eb94373725857ca9c117676bd4cf14ae6e0266479492e825d6038d"
+      }
+    }
+  ],
+  "restart_check": {
+    "passed": true,
+    "revision": 2,
+    "memory_citation": {
+      "memory_ref": {
+        "family": "memory",
+        "artifact_id": "memory",
+        "revision": 2
+      },
+      "entry_id": "mem_ent_4b5c0eb0f16549acabf572d2e0435cba",
+      "entry_version_id": "mem_ver_a21a35c7ba5046638d50daa7a026b187"
+    }
+  },
+  "isolation_check": {
+    "passed": true,
+    "revision": 0
+  },
+  "actual_powercontext_records": {
+    "scope_id": "scp_11qv9ynstt4tkv48ffpg8v6sws",
+    "revision": 4,
+    "memory_citation": {
+      "memory_ref": {
+        "family": "memory",
+        "artifact_id": "memory",
+        "revision": 4
+      },
+      "entry_id": "mem_ent_4b5c0eb0f16549acabf572d2e0435cba",
+      "entry_version_id": "mem_ver_f44a0dc76bb545ffabd65a26d3de8c33"
+    },
+    "recent_sources": [
+      {
+        "scope_id": "scp_11qv9ynstt4tkv48ffpg8v6sws",
+        "source_type": "content",
+        "source_id": "turn-baa67f71a5e294c154832cac35ebb2c54c26ee5a669d56d9dddc3887dbfdbcba",
+        "content": "{\"context\": {\"album\": [], \"card\": {\"options\": {\"A\": [\"为梦境加一段片尾字幕\", 1, \"梦境署名权\"], \"B\": [\"和失物签订梦境共享协议\", 2, \"共享梦境协议\"], \"C\": [\"让检疫员客串梦里的路人\", 0, \"路人乙通行证\"]}, \"scene\": \"梦境检疫员发现失物正在偷做你的梦，要求现场处理。\", \"title\": \"梦境检疫\"}, \"choices\": [], \"ending\": \"\", \"event\": {\"action\": \"寄存\", \"callback\": \"\", \"effect\": \"已登记失物，进入第一关。\", \"message\": \"会打嗝的月亮\"}, \"item\": \"会打嗝的月亮\", \"progress\": \"已完成 0/3 关\", \"receipt\": \"LP-B283B02BBD\", \"score\": 0, \"stamps\": [], \"trait\": \"坚信自己是一颗带薪休假的土豆\"}, \"expected_revision\": 0, \"input\": {\"action\": \"寄存\", \"callback\": \"\", \"effect\": \"已登记失物，进入第一关。\", \"message\": \"会打嗝的月亮\"}, \"narration\": \"柜员把眼镜往上推了推：关于“会打嗝的月亮”，本处已经认真地离谱了起来。\\n\\n已登记失物，进入第一关。\\n\\n顺便提醒，这件失物坚信自己是一颗带薪休假的土豆。\", \"player_scope\": \"scp_11qv9ynstt4tkv48ffpg8v6sws\", \"request_id\": \"8398ee1a-f637-4077-b1c6-7a9958f79334\"}",
+        "position": 1,
+        "content_digest": "sha256:760601fb5266f7fd814195cc16e31d3b2910c7f7c4292912e02245fda947b608"
+      },
+      {
+        "scope_id": "scp_11qv9ynstt4tkv48ffpg8v6sws",
+        "source_type": "content",
+        "source_id": "turn-8eb6cd0a86fe6f25287784577e3c84cb9fa57c8b09ef7bad64faede861151d7f",
+        "content": "{\"context\": {\"album\": [], \"card\": {\"options\": {\"A\": [\"与失物协商轮流当主人\", 2, \"共同监护协议\"], \"B\": [\"请柜员检查失物的工牌\", 0, \"失物临时工牌\"], \"C\": [\"承认自己确实需要被认领\", 1, \"人类认领申请表\"]}, \"scene\": \"失物突然声称自己才是主人，而你只是它弄丢的人类。\", \"title\": \"身份复核\"}, \"choices\": [{\"choice\": \"A\", \"note\": \"请记得我给月亮买了芋泥啵啵\", \"stage\": \"梦境检疫\", \"text\": \"为梦境加一段片尾字幕\"}], \"ending\": \"\", \"event\": {\"action\": \"A\", \"callback\": \"你上次在‘梦境检疫’选择了‘为梦境加一段片尾字幕’。当时还说：请记得我给月亮买了芋泥啵啵\", \"effect\": \"你选择了“为梦境加一段片尾字幕”，获得“梦境署名权”，默契值 +1。\", \"message\": \"请记得我给月亮买了芋泥啵啵\"}, \"item\": \"会打嗝的月亮\", \"progress\": \"已完成 1/3 关\", \"receipt\": \"LP-B283B02BBD\", \"score\": 1, \"stamps\": [\"梦境署名权\"], \"trait\": \"坚信自己是一颗带薪休假的土豆\"}, \"expected_revision\": 1, \"input\": {\"action\": \"A\", \"callback\": \"你上次在‘梦境检疫’选择了‘为梦境加一段片尾字幕’。当时还说：请记得我给月亮买了芋泥啵啵\", \"effect\": \"你选择了“为梦境加一段片尾字幕”，获得“梦境署名权”，默契值 +1。\", \"message\": \"请记得我给月亮买了芋泥啵啵\"}, \"narration\": \"柜员把眼镜往上推了推：关于“会打嗝的月亮”，本处已经认真地离谱了起来。\\n\\n你选择了“为梦境加一段片尾字幕”，获得“梦境署名权”，默契值 +1。\\n\\n老规矩，我可记着呢：你上次在‘梦境检疫’选择了‘为梦境加一段片尾字幕’。当时还说：请记得我给月亮买了芋泥啵啵\\n\\n顺便提醒，这件失物坚信自己是一颗带薪休假的土豆。\", \"player_scope\": \"scp_11qv9ynstt4tkv48ffpg8v6sws\", \"request_id\": \"00b49e86-46f4-4f8c-8c7e-80917c784cef\"}",
+        "position": 2,
+        "content_digest": "sha256:ef723d8f84e510dde3bacb5846c030d3c1ffccbceb503ea1479c4bd9f59394ea"
+      },
+      {
+        "scope_id": "scp_11qv9ynstt4tkv48ffpg8v6sws",
+        "source_type": "content",
+        "source_id": "turn-a440357d4ba19f1218e6cfef7022b56371ef30af6a5159452939fc51c4d8767f",
+        "content": "{\"context\": {\"album\": [], \"card\": {\"options\": {\"A\": [\"给它开一张情绪病假条\", 2, \"情绪病假条\"], \"B\": [\"让它和安检门互相道歉\", 1, \"安检门的道歉信\"], \"C\": [\"把委屈折成纸飞机寄走\", 0, \"折叠的委屈\"]}, \"scene\": \"安检门坚持认为失物有三公斤委屈，拒绝放行。\", \"title\": \"情绪安检\"}, \"choices\": [{\"choice\": \"A\", \"note\": \"请记得我给月亮买了芋泥啵啵\", \"stage\": \"梦境检疫\", \"text\": \"为梦境加一段片尾字幕\"}, {\"choice\": \"B\", \"note\": \"\", \"stage\": \"身份复核\", \"text\": \"请柜员检查失物的工牌\"}], \"ending\": \"\", \"event\": {\"action\": \"B\", \"callback\": \"你上次在‘身份复核’选择了‘请柜员检查失物的工牌’。\", \"effect\": \"你选择了“请柜员检查失物的工牌”，获得“失物临时工牌”，默契值 +0。\", \"message\": \"\"}, \"item\": \"会打嗝的月亮\", \"progress\": \"已完成 2/3 关\", \"receipt\": \"LP-B283B02BBD\", \"score\": 1, \"stamps\": [\"梦境署名权\", \"失物临时工牌\"], \"trait\": \"坚信自己是一颗带薪休假的土豆\"}, \"expected_revision\": 2, \"input\": {\"action\": \"B\", \"callback\": \"你上次在‘身份复核’选择了‘请柜员检查失物的工牌’。\", \"effect\": \"你选择了“请柜员检查失物的工牌”，获得“失物临时工牌”，默契值 +0。\", \"message\": \"\"}, \"narration\": \"柜员把眼镜往上推了推：关于“会打嗝的月亮”，本处已经认真地离谱了起来。\\n\\n你选择了“请柜员检查失物的工牌”，获得“失物临时工牌”，默契值 +0。\\n\\n老规矩，我可记着呢：你上次在‘身份复核’选择了‘请柜员检查失物的工牌’。\\n\\n顺便提醒，这件失物坚信自己是一颗带薪休假的土豆。\", \"player_scope\": \"scp_11qv9ynstt4tkv48ffpg8v6sws\", \"request_id\": \"e3d09b25-c142-4715-b22e-e6554fc802be\"}",
+        "position": 3,
+        "content_digest": "sha256:770a4840a6976b9bdb8aea5f163f5f08a2be76c79ea051a448188c08a0186287"
+      },
+      {
+        "scope_id": "scp_11qv9ynstt4tkv48ffpg8v6sws",
+        "source_type": "content",
+        "source_id": "turn-34a0e02af6eb94373725857ca9c117676bd4cf14ae6e0266479492e825d6038d",
+        "content": "{\"context\": {\"album\": [{\"ending\": \"反向认领：失物成功把你领回了家\", \"item\": \"会打嗝的月亮\", \"receipt\": \"LP-B283B02BBD\"}], \"card\": null, \"choices\": [{\"choice\": \"A\", \"note\": \"请记得我给月亮买了芋泥啵啵\", \"stage\": \"梦境检疫\", \"text\": \"为梦境加一段片尾字幕\"}, {\"choice\": \"B\", \"note\": \"\", \"stage\": \"身份复核\", \"text\": \"请柜员检查失物的工牌\"}, {\"choice\": \"C\", \"note\": \"\", \"stage\": \"情绪安检\", \"text\": \"把委屈折成纸飞机寄走\"}], \"ending\": \"反向认领：失物成功把你领回了家\", \"event\": {\"action\": \"C\", \"callback\": \"你上次在‘情绪安检’选择了‘把委屈折成纸飞机寄走’。\", \"effect\": \"你选择了“把委屈折成纸飞机寄走”，获得“折叠的委屈”，默契值 +0。 三关完成，已生成结局。\", \"message\": \"\"}, \"item\": \"会打嗝的月亮\", \"progress\": \"已完成 3/3 关\", \"receipt\": \"LP-B283B02BBD\", \"score\": 1, \"stamps\": [\"梦境署名权\", \"失物临时工牌\", \"折叠的委屈\"], \"trait\": \"坚信自己是一颗带薪休假的土豆\"}, \"expected_revision\": 3, \"input\": {\"action\": \"C\", \"callback\": \"你上次在‘情绪安检’选择了‘把委屈折成纸飞机寄走’。\", \"effect\": \"你选择了“把委屈折成纸飞机寄走”，获得“折叠的委屈”，默契值 +0。 三关完成，已生成结局。\", \"message\": \"\"}, \"narration\": \"柜员把眼镜往上推了推：关于“会打嗝的月亮”，本处已经认真地离谱了起来。\\n\\n你选择了“把委屈折成纸飞机寄走”，获得“折叠的委屈”，默契值 +0。 三关完成，已生成结局。\\n\\n老规矩，我可记着呢：你上次在‘情绪安检’选择了‘把委屈折成纸飞机寄走’。\\n\\n顺便提醒，这件失物坚信自己是一颗带薪休假的土豆。\", \"player_scope\": \"scp_11qv9ynstt4tkv48ffpg8v6sws\", \"request_id\": \"a1d251ce-2cbe-4c86-a0b7-49a14fda92a4\"}",
+        "position": 4,
+        "content_digest": "sha256:549f1e560f1a7d237ed03e270a5dd7e2fd0b6523bf0432c754e268b511941af7"
+      }
+    ]
+  }
+}

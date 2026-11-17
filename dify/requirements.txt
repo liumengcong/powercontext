@@ -1,0 +1,7 @@
+# Tested with Python 3.12.14. Full resolved versions are in requirements.lock.
+powercontext[builtin]==1.2.0
+fastapi==0.163.1
+uvicorn==0.54.0
+python-dotenv==1.2.4
+httpx==0.28.1
+PyYAML==6.0.3

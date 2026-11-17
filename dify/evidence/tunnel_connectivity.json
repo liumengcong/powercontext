@@ -1,0 +1,14 @@
+{
+  "checked_utc": "2026-11-17T03:30:39.140634+00:00",
+  "status": "passed",
+  "public_base_url": "https://pottery-pit-gateway-yang.trycloudflare.com",
+  "health_http_status": 200,
+  "authenticated_prepare_http_status": 200,
+  "memory_revision": 4,
+  "item": "会打嗝的月亮",
+  "ending": "反向认领：失物成功把你领回了家",
+  "history_callback_present": true,
+  "game_state_committed": false,
+  "dify_cloud_executed": false,
+  "note": "通过公网只读预备请求确认旧存档完整；不替代Dify全链路记录。"
+}

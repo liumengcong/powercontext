@@ -1,0 +1,490 @@
+app:
+  description: Dify × PowerContext：寄存不可能丢失的东西，用三次脑洞选择生成专属结局，跨会话保留存档。此文件仅用于无模型连通性自检。
+  icon: 🗃️
+  icon_background: '#EAF4EF'
+  mode: workflow
+  name: 离谱失物招领处·无模型自检
+  use_icon_as_answer_icon: false
+dependencies: []
+kind: app
+version: 0.4.0
+workflow:
+  conversation_variables: []
+  environment_variables:
+  - id: a30e7e2b-5548-4f1b-91d1-7ee86ae903d8
+    name: BACKEND_BASE_URL
+    description: 公网 HTTPS 后端地址，末尾不要斜杠
+    selector:
+    - env
+    - BACKEND_BASE_URL
+    value: https://YOUR_PUBLIC_HTTPS_HOST
+    value_type: string
+  - id: 5ad6cb7e-0e84-4dbb-b058-989ba4972fb3
+    name: BACKEND_TOKEN
+    description: 与后端 .env 中 BACKEND_TOKEN 相同，务必设置为 Secret
+    selector:
+    - env
+    - BACKEND_TOKEN
+    value: ''
+    value_type: secret
+  features:
+    file_upload:
+      enabled: false
+    opening_statement: ''
+    retriever_resource:
+      enabled: false
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    nodes:
+    - id: '100'
+      type: custom
+      data:
+        desc: ''
+        selected: false
+        title: 开始
+        type: start
+        variables:
+        - label: 存档口令 player_key（虚构游戏专用，8—64位英数）
+          variable: player_key
+          type: text-input
+          required: true
+          max_length: 64
+          options: []
+        - label: 操作 action
+          variable: action
+          type: select
+          required: true
+          options:
+          - 寄存
+          - A
+          - B
+          - C
+          - 回访
+          - 档案
+          - 重开
+          default: 寄存
+        - label: 物品 / 补充脑洞 message（寄存时必填）
+          variable: message
+          type: paragraph
+          required: false
+          max_length: 240
+          options: []
+      height: 120
+      width: 244
+      position:
+        x: 30
+        y: 240
+      positionAbsolute:
+        x: 30
+        y: 240
+      sourcePosition: right
+      targetPosition: left
+    - id: '200'
+      type: custom
+      data:
+        desc: ''
+        selected: false
+        title: 检查输入并生成请求
+        type: code
+        code: "import json\nimport re\nimport uuid\n\ndef main(player_key: str, action:\
+          \ str, message: str) -> dict:\n    key = (player_key or \"\").strip()\n\
+          \    if not re.fullmatch(r\"[A-Za-z0-9_-]{8,64}\", key):\n        raise\
+          \ ValueError(\"player_key 请填 8—64 位字母、数字、下划线或短横线；回访时使用同一个值。\")\n    message\
+          \ = (message or \"\").strip()\n    if len(message) > 240:\n        raise\
+          \ ValueError(\"message 最多 240 字；寄存物品名称最多 120 字。\")\n    payload = {\"player_key\"\
+          : key, \"action\": action, \"message\": message, \"request_id\": str(uuid.uuid4())}\n\
+          \    return {\"request_body\": json.dumps(payload, ensure_ascii=False)}\n"
+        code_language: python3
+        outputs:
+          request_body:
+            children: null
+            type: string
+        variables:
+        - value_selector:
+          - '100'
+          - player_key
+          variable: player_key
+        - value_selector:
+          - '100'
+          - action
+          variable: action
+        - value_selector:
+          - '100'
+          - message
+          variable: message
+      height: 120
+      width: 244
+      position:
+        x: 340
+        y: 240
+      positionAbsolute:
+        x: 340
+        y: 240
+      sourcePosition: right
+      targetPosition: left
+    - id: '300'
+      type: custom
+      data:
+        desc: ''
+        selected: false
+        title: PowerContext 读取与预备
+        type: http-request
+        method: post
+        url: '{{#env.BACKEND_BASE_URL#}}/v1/prepare'
+        authorization:
+          type: no-auth
+          config: null
+        headers: 'Content-Type:application/json
+
+          Authorization:Bearer {{#env.BACKEND_TOKEN#}}'
+        params: ''
+        body:
+          type: json
+          data:
+          - id: body-300
+            key: ''
+            type: text
+            value: '{{#200.request_body#}}'
+        timeout:
+          connect: 10
+          read: 60
+          write: 20
+        ssl_verify: true
+        retry_config:
+          retry_enabled: true
+          max_retries: 2
+          retry_interval: 1000
+      height: 120
+      width: 244
+      position:
+        x: 650
+        y: 240
+      positionAbsolute:
+        x: 650
+        y: 240
+      sourcePosition: right
+      targetPosition: left
+    - id: '400'
+      type: custom
+      data:
+        desc: ''
+        selected: false
+        title: 检查服务并取出记忆
+        type: code
+        code: "import json\n\ndef main(body: str, status_code: int) -> dict:\n   \
+          \ if int(status_code) != 200:\n        try:\n            detail = json.loads(body).get(\"\
+          detail\", body)\n        except Exception:\n            detail = body[:500]\n\
+          \        raise ValueError(\"存档服务返回 \" + str(status_code) + \": \" + str(detail))\n\
+          \    data = json.loads(body)\n    for field in [\"ticket\", \"director_context\"\
+          , \"fallback_narration\"]:\n        if field not in data:\n            raise\
+          \ ValueError(\"存档服务缺少字段：\" + field)\n    return {\"ticket\": data[\"ticket\"\
+          ], \"director_context\": data[\"director_context\"], \"fallback_narration\"\
+          : data[\"fallback_narration\"]}\n"
+        code_language: python3
+        outputs:
+          ticket:
+            children: null
+            type: string
+          director_context:
+            children: null
+            type: string
+          fallback_narration:
+            children: null
+            type: string
+        variables:
+        - value_selector:
+          - '300'
+          - body
+          variable: body
+        - value_selector:
+          - '300'
+          - status_code
+          variable: status_code
+      height: 120
+      width: 244
+      position:
+        x: 960
+        y: 240
+      positionAbsolute:
+        x: 960
+        y: 240
+      sourcePosition: right
+      targetPosition: left
+    - id: '500'
+      type: custom
+      data:
+        desc: ''
+        selected: false
+        title: 规则旁白（无模型自检）
+        type: code
+        code: "def main(fallback_narration: str) -> dict:\n    return {\"text\": \"\
+          【无模型自检旁白】\\n\" + fallback_narration}\n"
+        code_language: python3
+        outputs:
+          text:
+            children: null
+            type: string
+        variables:
+        - value_selector:
+          - '400'
+          - fallback_narration
+          variable: fallback_narration
+      height: 120
+      width: 244
+      position:
+        x: 1270
+        y: 240
+      positionAbsolute:
+        x: 1270
+        y: 240
+      sourcePosition: right
+      targetPosition: left
+    - id: '600'
+      type: custom
+      data:
+        desc: ''
+        selected: false
+        title: 生成安全保存请求
+        type: code
+        code: "import json\n\ndef main(ticket: str, narration: str) -> dict:\n   \
+          \ narration = (narration or \"\").strip()\n    if not narration:\n     \
+          \   raise ValueError(\"模型没有返回旁白；本回合尚未保存，可重新运行。\")\n    return {\"request_body\"\
+          : json.dumps({\"ticket\": ticket, \"narration\": narration[:2000]}, ensure_ascii=False)}\n"
+        code_language: python3
+        outputs:
+          request_body:
+            children: null
+            type: string
+        variables:
+        - value_selector:
+          - '400'
+          - ticket
+          variable: ticket
+        - value_selector:
+          - '500'
+          - text
+          variable: narration
+      height: 120
+      width: 244
+      position:
+        x: 1580
+        y: 240
+      positionAbsolute:
+        x: 1580
+        y: 240
+      sourcePosition: right
+      targetPosition: left
+    - id: '700'
+      type: custom
+      data:
+        desc: ''
+        selected: false
+        title: PowerContext 提交记忆
+        type: http-request
+        method: post
+        url: '{{#env.BACKEND_BASE_URL#}}/v1/commit'
+        authorization:
+          type: no-auth
+          config: null
+        headers: 'Content-Type:application/json
+
+          Authorization:Bearer {{#env.BACKEND_TOKEN#}}'
+        params: ''
+        body:
+          type: json
+          data:
+          - id: body-700
+            key: ''
+            type: text
+            value: '{{#600.request_body#}}'
+        timeout:
+          connect: 10
+          read: 60
+          write: 20
+        ssl_verify: true
+        retry_config:
+          retry_enabled: true
+          max_retries: 2
+          retry_interval: 1000
+      height: 120
+      width: 244
+      position:
+        x: 1890
+        y: 240
+      positionAbsolute:
+        x: 1890
+        y: 240
+      sourcePosition: right
+      targetPosition: left
+    - id: '800'
+      type: custom
+      data:
+        desc: ''
+        selected: false
+        title: 输出剧情及真实记忆回执
+        type: code
+        code: "import json\n\ndef main(body: str, status_code: int) -> dict:\n   \
+          \ if int(status_code) != 200:\n        try:\n            detail = json.loads(body).get(\"\
+          detail\", body)\n        except Exception:\n            detail = body[:500]\n\
+          \        raise ValueError(\"保存失败 \" + str(status_code) + \": \" + str(detail))\n\
+          \    data = json.loads(body)\n    fields = [\"scope_id\", \"memory_before\"\
+          , \"memory_after\", \"state_changed\", \"replayed\", \"powercontext\", \"\
+          source_id\"]\n    return {\"answer\": data[\"answer\"], \"memory_proof\"\
+          : json.dumps({key: data.get(key) for key in fields}, ensure_ascii=False)}\n"
+        code_language: python3
+        outputs:
+          answer:
+            children: null
+            type: string
+          memory_proof:
+            children: null
+            type: string
+        variables:
+        - value_selector:
+          - '700'
+          - body
+          variable: body
+        - value_selector:
+          - '700'
+          - status_code
+          variable: status_code
+      height: 120
+      width: 244
+      position:
+        x: 2200
+        y: 240
+      positionAbsolute:
+        x: 2200
+        y: 240
+      sourcePosition: right
+      targetPosition: left
+    - id: '900'
+      type: custom
+      data:
+        desc: ''
+        selected: false
+        title: 结束
+        type: end
+        outputs:
+        - value_selector:
+          - '800'
+          - answer
+          variable: answer
+        - value_selector:
+          - '800'
+          - memory_proof
+          variable: memory_proof
+      height: 120
+      width: 244
+      position:
+        x: 2510
+        y: 240
+      positionAbsolute:
+        x: 2510
+        y: 240
+      sourcePosition: right
+      targetPosition: left
+    edges:
+    - id: 100-200
+      source: '100'
+      target: '200'
+      sourceHandle: source
+      targetHandle: target
+      type: custom
+      data:
+        sourceType: start
+        targetType: code
+        isInIteration: false
+        isInLoop: false
+    - id: 200-300
+      source: '200'
+      target: '300'
+      sourceHandle: source
+      targetHandle: target
+      type: custom
+      data:
+        sourceType: code
+        targetType: http-request
+        isInIteration: false
+        isInLoop: false
+    - id: 300-400
+      source: '300'
+      target: '400'
+      sourceHandle: source
+      targetHandle: target
+      type: custom
+      data:
+        sourceType: http-request
+        targetType: code
+        isInIteration: false
+        isInLoop: false
+    - id: 400-500
+      source: '400'
+      target: '500'
+      sourceHandle: source
+      targetHandle: target
+      type: custom
+      data:
+        sourceType: code
+        targetType: code
+        isInIteration: false
+        isInLoop: false
+    - id: 500-600
+      source: '500'
+      target: '600'
+      sourceHandle: source
+      targetHandle: target
+      type: custom
+      data:
+        sourceType: code
+        targetType: code
+        isInIteration: false
+        isInLoop: false
+    - id: 600-700
+      source: '600'
+      target: '700'
+      sourceHandle: source
+      targetHandle: target
+      type: custom
+      data:
+        sourceType: code
+        targetType: http-request
+        isInIteration: false
+        isInLoop: false
+    - id: 700-800
+      source: '700'
+      target: '800'
+      sourceHandle: source
+      targetHandle: target
+      type: custom
+      data:
+        sourceType: http-request
+        targetType: code
+        isInIteration: false
+        isInLoop: false
+    - id: 800-900
+      source: '800'
+      target: '900'
+      sourceHandle: source
+      targetHandle: target
+      type: custom
+      data:
+        sourceType: code
+        targetType: end
+        isInIteration: false
+        isInLoop: false
+    viewport:
+      x: 0
+      y: 0
+      zoom: 0.5
+  rag_pipeline_variables: []

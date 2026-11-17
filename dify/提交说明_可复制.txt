@@ -1,0 +1,17 @@
+作品名称：离谱失物招领处
+
+技术方案：Dify + PowerContext。
+
+作品以“把不可能丢失的东西交给 AI 柜员”为主题。玩家寄存一件离谱物品，在三道荒诞办事窗口中选择 A/B/C，收集纪念章并解锁结局；再次打开应用时，使用同一存档口令可以恢复物品、剧情进度和历史选择，让柜员接住之前的老梗。
+
+Dify 承担输入校验、HTTP 记忆读取、聊天模型旁白生成、结果保存和输出编排；PowerContext 1.2.0 通过官方 SDK 保存玩家真实输入、当前状态和历史回执，并按玩家独立 Scope 隔离。采用 prepare → LLM → commit 的流程，模型失败不会提前推进关卡。
+
+正式应用文件：dify/dsl/01_离谱失物招领处_AI正式版.yml。
+无模型自检文件：dify/dsl/00_无模型连通性自检.yml。
+运行说明：dify/docs/运行说明.md。
+完整样例：dify/docs/验证样例.md。
+配套源码、依赖锁定、初始化脚本和部署配置均在 dify/ 下。
+
+本地真实 PowerContext 与 HTTP 后端验证、12 项集成检查已通过；对应范围和结果在 dify/evidence/。Dify Cloud 的实际导入、模型配置及全链路运行证据，应以仓库中补充的真实 Cloud 验收记录为准。本说明不将本地检查等同于官方验收，不承诺评分结果。
+
+2026-11-17更新：已真实Cloud回访及发布，实际导出在dsl/02_，真实输出在evidence/dify_cloud_actual_revisit.txt。完整API自动验收及重新导入复现尚未补做；交付目标为私有仓库 liumengcong/powercontext-dify-2026，分支2026-competition-ecosystem；本题平台提测尚未进行。

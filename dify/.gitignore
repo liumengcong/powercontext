@@ -1,0 +1,12 @@
+.env
+.venv/
+.tools/
+data/
+__pycache__/
+.pytest_cache/
+*.pyc
+*.db
+*.db-wal
+*.db-shm
+.DS_Store
+evidence/dify_live_acceptance.json
